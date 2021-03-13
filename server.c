@@ -311,7 +311,7 @@ void imprimirMano(char manoServer[3][17])
 
 	fflush(stdin);
 
-	printf("Su mano: ");
+	printf("\nSu mano: ");
 	for(i = 0; i < 3;i++)
 	{
 		if(strcmp(manoServer[i], "x") != 0)
@@ -429,7 +429,8 @@ void enviarFlag(int flag)
 
 int imprimirOpciones(char manoServer[3][17])
 {
-	int i = 0, salida = 0;
+	//imprime las opciones disponibles y guarda la opcion elegida por el server
+	int i = 0, salida = 0, flag = 0;
 
 	fflush(stdin);
 
@@ -440,8 +441,32 @@ int imprimirOpciones(char manoServer[3][17])
 			printf("%d para tirar %s\n", i+1, manoServer[i]);
 		
 	}
-
-	scanf("%d", &salida);
+	while(flag == 0)
+	{
+		scanf("%d", &salida);//guardo la opcion elegida en salida
+		//compruebo que la opcion sea correcta
+		flag = 1;
+		if(salida >0 && salida <4)
+		{
+			for(i = 0; i < 3;i++)
+			{
+				if(strcmp(manoServer[i], "x") == 0)
+				{
+					if(salida == i+1)
+					{
+						flag = 0;
+						printf("Seleccione una opcion valida\n");
+					}
+				}
+			}
+		
+		}
+		else
+		{
+			flag =0;
+			printf("Seleccione una opcion valida\n");
+		}
+	}
 
 	salida--;//acomodo el indice
 
@@ -743,8 +768,8 @@ int main( void )
 		}
 
 		//subo puntos
-		if((primera == 0 && segunda == 0)||(primera == 0 || segunda == 2)||(primera == 0 && segunda == 1 && tercera == 0)||
-		(primera == 0 && segunda == 1 && tercera == 2)||(primera == 2 && segunda == 0)||
+		if((primera == 0 && segunda == 0)||(primera == 0 && segunda == 2)||(primera == 0 && segunda == 1 && tercera == 0)||
+		(primera == 0 && segunda == 1 && tercera == 2)||(primera == 1 && segunda == 0 && tercera == 0)||(primera == 2 && segunda == 0)||
 		(primera == 2 && segunda == 2 && tercera == 0)||(primera = 2 && segunda == 2 && tercera == 2 && (manonumero%2) == 1))//gana el server
 		{
 			puntosServer++;
@@ -779,6 +804,7 @@ int main( void )
 		//PRUEBA----------------------------------------------------------------------------------------------------
 		flag = 3;
 		enviarFlag(flag);
+		enviarGrilla(grilla);
 		//----------------------------------------------------------------------------------------------------
 		manonumero++;
 

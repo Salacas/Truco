@@ -122,7 +122,7 @@ void imprimirMano(char manoCliente[3][17])
 
     fflush(stdin);
 
-    printf("Su mano: ");
+    printf("\nSu mano: ");
     for(i = 0; i < 3;i++)
     {
         if(strcmp(manoCliente[i], "x") != 0)
@@ -208,7 +208,7 @@ void eliminarCarta(int numeroCarta, char manoCliente[][3][17])
 
 int imprimirOpciones(char manoCliente[3][17])
 {
-    int i = 0, salida = 0;
+    int i = 0, salida = 0, flag = 0;
 
     fflush(stdin);
 
@@ -220,7 +220,32 @@ int imprimirOpciones(char manoCliente[3][17])
         
     }
 
-    scanf("%d", &salida);
+    while(flag == 0)//flag = 1 significa que se ingreso la opcion correcta
+    {
+        scanf("%d", &salida);//guardo la opcion elegida en salida
+        //compruebo que la opcion sea correcta
+        flag = 1;
+        if(salida >0 && salida <4)
+        {
+            for(i = 0; i < 3;i++)
+            {
+                if(strcmp(manoCliente[i], "x") == 0)
+                {
+                    if(salida == i+1)
+                    {
+                        flag = 0;
+                        printf("Seleccione una opcion valida\n");
+                    }
+                }
+            }
+        
+        }
+        else
+        {
+            flag =0;
+            printf("Seleccione una opcion valida\n");
+        }
+    }
 
     salida--;//acomodo el indice
 
@@ -292,7 +317,15 @@ int main(int argc, char *argv[])
         recibirFlag(&flag);
 
         if(flag == 3)
-            printf("Ha finalizado el partido\n");
+        {
+            system("clear");
+            recibirGrilla(&grilla);
+            revertirGrilla(&grilla);
+            imprimirGrilla(grilla);
+            imprimirMano(manoCliente);
+            printf("Ha finalizado la mano\n");
+        }
+
         else if(flag == 2)//empieza una mano
             recibirCartas(&manoCliente);
         else if(flag == 0)//turno del server
