@@ -22,6 +22,20 @@ void recibirString(char *buf);
 
 void imprimirMano(char manoCliente[3][17]);
 
+void recibirGrilla(char grilla[][4][90]);
+
+void imprimirGrilla(char grilla[4][90]);
+
+void revertirGrilla(char grilla[][4][90]);
+
+void recibirFlag(int *flagp);
+
+void eliminarCarta(int numeroCarta, char manoCliente[][3][17]);
+
+int imprimirOpciones(char manoCliente[3][17]);
+
+void enviarOpcion(int *opcionP);
+
 //funciones------------------------------
 void recibirCartas(char manoCliente[][3][17] )
 {
@@ -103,17 +117,136 @@ void recibirString(char *buf)
 
 void imprimirMano(char manoCliente[3][17])
 {
-    printf("Su mano: %s\t%s\t%s\n", manoCliente[0], manoCliente[1], manoCliente[2]);
+    
+    int i = 0;
+
+    fflush(stdin);
+
+    printf("Su mano: ");
+    for(i = 0; i < 3;i++)
+    {
+        if(strcmp(manoCliente[i], "x") != 0)
+            printf("%s\t", manoCliente[i]);
+        
+    }
+
+    printf("\n");
+}
+
+void recibirGrilla(char grilla[][4][90])
+{
+    int i = 0, numbytes = 0, j = 0;
+    for(i = 0;i < 4; i++)
+    {
+        for(j = 0; j < 90;j++)
+        {
+            if ((numbytes = recv( sockfd , &((*grilla)[i][j]), sizeof(char),  0 )) == -1  )//la cantidad de datos a recibir en el proximo recv
+            {
+                perror("recv");
+                close(sockfd);
+                exit(1);
+            }
+        }
+    }
+}
+
+void imprimirGrilla(char grilla[4][90])
+{
+    int i = 0, j = 0;
+
+    for(i = 0; i < 4; i++)
+    {
+        for(j = 0; j < 90; j++)
+            printf("%c", grilla[i][j]);
+    }
+}
+
+void revertirGrilla(char grilla[][4][90])
+{
+    //revierte la orientacion de la grilla para el punto de vista del jugador cliente
+    char fila1[90], fila3[90];
+    int i = 0;
+
+    for(i = 0; i < 90; i++)
+    {
+        fila1[i]= (*grilla)[1][i];
+    }
+
+    for(i = 0; i < 90; i++)
+    {
+        fila3[i]= (*grilla)[3][i];
+    }
+
+    for(i = 0; i < 90; i++)
+    {
+        (*grilla)[1][i] =fila3[i];
+    }
+
+    for(i = 0; i < 90; i++)
+    {
+        (*grilla)[3][i] =fila1[i];
+    }
+    
+}
+
+void recibirFlag(int *flagp)
+{
+    //flag = 1 indica que termino el juego
+    int numbytes = 0;
+    if ((numbytes = recv( sockfd , flagp, sizeof(int),  0 )) == -1  )//recibo la flag
+        {
+            perror("recv");
+            close(sockfd);
+            exit(1);
+        }
+}
+
+void eliminarCarta(int numeroCarta, char manoCliente[][3][17])
+{
+    strcpy((*manoCliente)[numeroCarta], "x");
+}
+
+int imprimirOpciones(char manoCliente[3][17])
+{
+    int i = 0, salida = 0;
+
+    fflush(stdin);
+
+    printf("Presione:");
+    for(i = 0; i < 3;i++)
+    {
+        if(strcmp(manoCliente[i], "x") != 0)
+            printf("%d para tirar %s\n", i+1, manoCliente[i]);
+        
+    }
+
+    scanf("%d", &salida);
+
+    salida--;//acomodo el indice
+
+    return salida;
+}
+
+void enviarOpcion(int *opcionP)
+{
+    int numbytes = 0;
+     if ( ( numbytes = send(sockfd, opcionP, sizeof(int), 0) ) == -1 )
+    {
+        perror("recv");
+        close(sockfd);
+        exit(1);
+    }
 }
 
 int main(int argc, char *argv[])
 {
 	struct in_addr addr;
-	int numbytes = 0, flag = 0, i = 0, buflen = 0;
+	int numbytes = 0, flag = 0, i = 0, buflen = 0, opcion = 0;
 	char buf[MAXDATASIZE], nombreServer[MAXDATASIZE], nombreCliente[MAXDATASIZE];
 	struct sockaddr_in their_addr;
 	//char manoServer[3][17];//la carta mas "larga" seria "Cuatro de espadas"(16 letras) + NULL
    	char manoCliente[3][17];
+    char grilla[4][90];
 
 	if (argc != 2) 
 	{
@@ -146,23 +279,46 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+    //inicio de conexion--------------------------------------------------------------------
 	printf("Conexion exitosa con el servidor\n");
 	printf("Ingrese su nombre: ");
 	scanf("%s", nombreCliente);
 
     recibirString(nombreServer);//recibo el nombre del jugador server
     enviarString(nombreCliente);//envio el nombre del jugador cliente
-/*
-    while(flag == 0)
-    {
-        recibirCartas(&manoCliente);
 
+    while(flag != 3)//flag = 3 significa que termino el juego
+    { 
+        recibirFlag(&flag);
 
+        if(flag == 3)
+            printf("Ha finalizado el partido\n");
+        else if(flag == 2)//empieza una mano
+            recibirCartas(&manoCliente);
+        else if(flag == 0)//turno del server
+        {
+            system("clear");
+            recibirGrilla(&grilla);
+            revertirGrilla(&grilla);
+            imprimirGrilla(grilla);
+            imprimirMano(manoCliente);
+            //imprimirEstado
+        }
+        else if(flag == 1)//turno del cliente
+        {
+            system("clear");
+            recibirGrilla(&grilla);
+            revertirGrilla(&grilla);
+            imprimirGrilla(grilla);
+            imprimirMano(manoCliente);
+            //imprimirEstado
+            opcion = imprimirOpciones(manoCliente);
+            eliminarCarta(opcion, &manoCliente);
+            enviarOpcion(&opcion);
+        }
 
     }
-  */
-    recibirCartas(&manoCliente);
-  	printf("Mi mano:%s%s%s\n", manoCliente[0], manoCliente[1], manoCliente[2]);
+
 	close(sockfd);
 
 	return 0;
