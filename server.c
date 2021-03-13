@@ -606,8 +606,7 @@ int main( void )
 		close(sockfd);
 		exit(1);
 	}
-	
-	
+
 	printf("Esperando conexion...\n");
 	
 	sin_size = sizeof( struct sockaddr_in );
