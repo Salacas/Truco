@@ -298,9 +298,10 @@ int main(int argc, char *argv[])
 	}
 
     //inicio de conexion--------------------------------------------------------------------
-	printf("Conexion exitosa con el servidor\n");
-	printf("Ingrese su nombre: ");
-	scanf("%s", nombreCliente);
+	//printf("Conexion exitosa con el servidor\n");
+	//printf("Ingrese su nombre: ");
+    //scanf("%s", nombreCliente);
+	strcpy(nombreCliente, "Nicolas");
 
     recibirString(&nombreServer);//recibo el nombre del jugador server
     enviarString(nombreCliente);//envio el nombre del jugador cliente

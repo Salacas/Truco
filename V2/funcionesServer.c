@@ -380,16 +380,17 @@ void enviarFlag(int flag)
 }
 
 int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char grillaP[][4][90], int j, int *envidoP,int *trucoP,
- int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP)
+ int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP, int * puntosClienteP, int puntosServer, char *nombreServer,
+ char *nombreCliente, int *flag1P, int *quienTieneElQuieroP, int manoNumero)
 {
 	//imprime las opciones disponibles y pide por teclado la opcion deseada
     //ademas cambia las variables correspondientes
 
-	//j indica si estamos en primera, segunda o tercera
-    //cada opcion la identifico con un numero
+	//j indica si estamos en primera, segunda o tercera.
+    //Cada opcion la identifico con un numero:
     //de 1 a 3 es tirar cartas, 4 cantar truco, 5 cantar retruco, 6 cantar quiero vale cuatro
     // 7 cantar envido, 8 cantar real envido, 9 cantar falta envido
-    // 10 querer, 11 no querer
+    // 10 querer, 11 no querer y 12 irse al mazo
 	int i = 0, salida = 0, flag = 0, cantOpciones = 0, opciones[MAXDATASIZE];
 
 	fflush(stdin);
@@ -410,8 +411,8 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
     }
 
     //imprimo las opciones del truco
-    if(*seCantoEnvidoP == 0)//si no se esta cantando el envido
-    {
+    if(*seCantoEnvidoP == 0 && *quienTieneElQuieroP != 1)//si no se esta cantando el envido
+    {													 //y si no tiene el quiero el cliente
         if(*trucoP == 1)
         {
             printf("4 para cantar truco\n");
@@ -435,10 +436,15 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
     //imprimo las opciones para el envido
 	if(j == 1)
 	{
-		//si se canto el truco y este se acepto ya no se puede cantar envido.
-		//tampoco si ya se canto y se acepto o no se acepto
-        if((*trucoP != 1 && *seCantoTrucoP == 0)||(*envidoP>0 && *seCantoEnvidoP== 0))
-        i = i;
+		//si se canto el truco y este se acepto, ya no se puede cantar envido.
+		//tampoco si ya se canto el envido y se acepto (o no)
+		//tampoco si soy mano y ya tire mi carta en la primera, a menos que el otro me lo cante
+		//tampoco si soy mano y antes de tirar mi carta canto truco, a menos que el otro me lo cante
+		//tampoco si no soy mano y antes de tirar mi carta canto retruco o vale cuatro
+        if((*trucoP != 1 && *seCantoTrucoP == 0)||(*envidoP>0 && *seCantoEnvidoP== 0)
+		||(manoNumero%2==1 && (*compararP)[0][0]!='t' && *seCantoEnvidoP == 0)
+		||(manoNumero%2==1 && (*compararP)[0][0]=='t' && *seCantoTrucoP == 1 && *seCantoEnvidoP == 0)
+		||(manoNumero%2==0 && (*compararP)[0][0]=='t' && *trucoP>2));
         else
         {
 		    if(*envidoP == 0 || *envidoP == 2)
@@ -487,6 +493,14 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
         opciones[cantOpciones]=11;
         cantOpciones++;
     }
+
+	//imprimo el "me voy al mazo" cuando sea posible
+	if(*seCantoEnvidoP == 0 && *seCantoTrucoP ==0)//cuando no se este cantando ni truco ni envido
+	{
+		printf("12 para irse al mazo\n");
+		opciones[cantOpciones]=12;
+        cantOpciones++;
+	}
 	
     //pido por teclado la opcion
 	while(flag == 0)
@@ -529,7 +543,7 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
         }
 		else if(salida == 9)//si se canto falta envido
         {
-			(*envidoP) = 30;
+			(*envidoP) += 30;
             (*seCantoEnvidoP)= 1;
         }
 	}
@@ -541,23 +555,66 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
         (*seCantoTrucoP) = 1;
     }
 
-    //si se acepto o no se quiso algo reinicio variables
+    //si se acepto o no se quiso algo cargo puntos y/o reinicio variables
     if(salida == 10 || salida == 11)
     {
         if(*seCantoEnvidoP == 1)
 		{
         	(*seCantoEnvidoP) = 0;
+
+			if(salida == 10)//si se quiso el envido
 			(*hayQueProcesarEnvidoP)=1;
+			else//si no se quiso el envido cargo puntos al cliente
+			{
+				if(*envidoP == 2 || *envidoP == 3)
+				(*puntosClienteP) += 1;
+				else if(*envidoP == 4)
+				(*puntosClienteP) += 2;
+				else if(*envidoP == 7)
+				(*puntosClienteP) += 4;
+				else if(*envidoP >= 30)
+				(*puntosClienteP) += (*envidoP - 30);
+				actualizarGrilla(grillaP,puntosServer, *puntosClienteP, nombreServer,
+				nombreCliente);
+			}
+
 		}
         else if(*seCantoTrucoP == 1)
-        (*seCantoTrucoP) = 0;
+		{
+        	(*seCantoTrucoP) = 0;
+			(*quienTieneElQuieroP) = 0;
+			if(salida == 11)//si no se quiso el truco
+			{
+				(*flag1P) = 1;
+				(*puntosClienteP) += (*trucoP - 1);
+				actualizarGrilla(grillaP,puntosServer, *puntosClienteP, nombreServer,
+				nombreCliente);
+			}
+
+		}
     }
+
+	//si me voy al mazo
+	if(salida == 12)
+	{
+		(*flag1P) = 1;
+
+		(*puntosClienteP) += (*trucoP);
+
+		if(j == 1 && *envidoP == 0)//si estamos en primera y no se canto el envido
+			(*puntosClienteP) ++;
+
+		actualizarGrilla(grillaP,puntosServer, *puntosClienteP, nombreServer,
+		nombreCliente);
+	}
 
 	return salida;
 }
 
 void recibirOpcionYActualizar(int *opcionClienteP, char manoClienteP[][3][17], char compararP[][2][17],
-char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP)
+char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP,
+int *hayQueProcesarEnvidoP, int * puntosServerP, int puntosCliente, char *nombreServer, char *nombreCliente,
+int *flag1P, int *quienTieneElQuieroP)
 {
     //recibo la opcion selecciona por el cliente y actualizo las variables 
     //correspondientes
@@ -594,7 +651,7 @@ char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int 
         }
 		else if(*opcionClienteP == 9)//si se canto falta envido
         {
-			(*envidoP) = 30;
+			(*envidoP) += 30;
             (*seCantoEnvidoP)= 1;
         }
 	}
@@ -611,17 +668,59 @@ char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int 
         if(*seCantoEnvidoP == 1)
 		{
         	(*seCantoEnvidoP) = 0;
+
+			if(*opcionClienteP == 10)//si se quiso el envido
 			(*hayQueProcesarEnvidoP)=1;
+			else//si no se quiso el envido cargo puntos al server
+			{
+				if(*envidoP == 2 || *envidoP == 3)
+				(*puntosServerP) += 1;
+				else if(*envidoP == 4)
+				(*puntosServerP) += 2;
+				else if(*envidoP == 7)
+				(*puntosServerP) += 4;
+				else if(*envidoP >= 30)
+				(*puntosServerP) += (*envidoP - 30);
+				actualizarGrilla(grillaP,*puntosServerP, puntosCliente, nombreServer,
+				nombreCliente);
+			}
+
 		}
         else if(*seCantoTrucoP == 1)
-        (*seCantoTrucoP) = 0;
+       	{
+        	(*seCantoTrucoP) = 0;
+			(*quienTieneElQuieroP) = 1;
+
+			if(*opcionClienteP == 11)//si no se quiso el truco
+			{
+				(*flag1P) = 1;
+				(*puntosServerP)+=(*trucoP - 1);
+				actualizarGrilla(grillaP,*puntosServerP, puntosCliente, nombreServer,
+				nombreCliente);
+			}
+		}
     }
+	//si me voy al mazo
+	if(*opcionClienteP == 12)
+	{
+		(*flag1P) = 1;
+		
+		(*puntosServerP) += (*trucoP);
+
+		if(j == 1 && *envidoP == 0)//si estamos en primera y no se canto el envido
+		(*puntosServerP) ++;
+
+		actualizarGrilla(grillaP,*puntosServerP, puntosCliente, nombreServer,
+		nombreCliente);
+	}
 
 }
 
-int quienGano(CARTA *mazo, char comparar[2][17])
+void quienGano(CARTA *mazo, char comparar[2][17], int *primeraP, int *segundaP, int *terceraP, int h)
 {
-	//retorna 0 si gano el server, 1 si gano el cliente y 2 si es parda
+	//calcula quien gano la ronda y agrega los valores correspondientes
+	//0 si gano el server y 1 si gano el cliente
+	//h indica en que ronda estamos(primera, segunda o tercera)
 	int salida = 0, valorServer = 0, valorCliente = 0, i = 0, j = 0;
 	char numero[7], palo[7], *token;
 
@@ -652,53 +751,59 @@ int quienGano(CARTA *mazo, char comparar[2][17])
 
 	//comparo los valores
 	if(valorServer > valorCliente)
-		salida = 0;
+	salida = 0;
 	else if(valorServer < valorCliente)
-		salida = 1;
+	salida = 1;
 	else if(valorServer == valorCliente)
-		salida = 2;
-
-
-	return salida;
+	salida = 2;
+	//agrego valores
+	if(h == 1)
+	(*primeraP) = salida;
+	else if(h == 2)
+	(*segundaP) = salida;
+	else if(h == 3)
+	(*terceraP) = salida;
 }
 
 void actualizarGrilla(char grilla[][4][90], int puntosServer, int puntosCliente, char *nombreServer, char *nombreCliente)
 {
-	//actualiza los puntos de cada jugador en el score
+	//actualiza los puntos de cada jugador en el score.
+	//utiliza los nombres de los jugadores para ubicarse correctamente en la grilla
 	int digito = 0;
 
+	//actualizo los puntos del server
 	//si es mayor a 10 hay que agregar dos digitos por separado
 	if(puntosServer < 10)
 		(*grilla)[2][61+strlen(nombreServer)/2]=puntosServer + 48;//+ 48 es para igualarlo en la tabla ascii
 	else
 	{
-		digito = puntosServer % 10;//agarro el primer digito
-		(*grilla)[2][61+strlen(nombreServer)/2]=digito + 48;
-		digito = puntosServer / 10;//agarro el segundo digito
+		digito = puntosServer % 10;//agarro el segundo digito
 		(*grilla)[2][61+strlen(nombreServer)/2 + 1]=digito + 48;
+		digito = puntosServer / 10;//agarro el primer digito
+		(*grilla)[2][61+strlen(nombreServer)/2]=digito + 48;
+		
 	}
-
+	//ahora actualizo los puntos del cliente
 	if(puntosCliente < 10)
 		(*grilla)[2][61+strlen(nombreServer)+5+strlen(nombreCliente)/2]=puntosCliente + 48;
 	else
 	{
-		digito = puntosCliente % 10;//agarro el primer digito
-		(*grilla)[2][61+strlen(nombreServer)+5+strlen(nombreCliente)/2]=digito + 48;
-		digito = puntosCliente / 10;//agarro el segundo digito
+		digito = puntosCliente % 10;//agarro el segundo digito
 		(*grilla)[2][61+strlen(nombreServer)+5+strlen(nombreCliente)/2 + 1]=digito + 48;
+		digito = puntosCliente / 10;//agarro el primer digito
+		(*grilla)[2][61+strlen(nombreServer)+5+strlen(nombreCliente)/2]=digito + 48;
 	}
 }
 
 void limpiarGrilla(char grilla[][4][90],int puntosServer, int puntosCliente, char *nombreServer, char *nombreCliente, int puntosMaximos)
 {
 	//inicializa la grilla y le agrega los puntos de los jugadores
-	//de forma que este lista para jugar la proxima mano
 	inicializarGrilla(grilla,nombreServer, nombreCliente, puntosMaximos);
 	actualizarGrilla(grilla, puntosServer, puntosCliente, nombreServer, nombreCliente);
 }
 
 void enviarOpciones(char manoClienteP[][3][17], int j, int *envidoP,int *trucoP,
-int *seCantoTrucoP, int *seCantoEnvidoP)
+int *seCantoTrucoP, int *seCantoEnvidoP, int *quienTieneElQuieroP, int manoNumero, char comparar[2][17])
 {
     //procesa las opciones disponibles para el cliente y se las manda
     int i = 0;
@@ -720,8 +825,8 @@ int *seCantoTrucoP, int *seCantoEnvidoP)
     }
 
     //envio las opciones del truco
-    if(*seCantoEnvidoP == 0)//si no se esta cantando el envido
-    {
+    if(*seCantoEnvidoP == 0 && *quienTieneElQuieroP != 0)//si no se esta cantando el envido 
+    {													// y si el server no tiene el quiero
         if(*trucoP == 1)
         {
             enviarString("4 para cantar truco");
@@ -740,9 +845,14 @@ int *seCantoTrucoP, int *seCantoEnvidoP)
 	if(j == 1)//si estamos en primera
 	{
 		//si se canto el truco y este se acepto ya no se puede cantar envido.
-		//tampoco si ya se canto y se acepto o no se acepto
-        if((*trucoP != 1 && *seCantoTrucoP == 0)||(*envidoP>0 && *seCantoEnvidoP== 0))
-        i = i;
+		//tampoco si ya se canto y se acepto(o no)
+		//tampoco si soy mano y tire mi carta, a menos que el otro me lo cante
+		//tampoco si soy mano y antes de tirar mi carta canto truco, a menos que el otro me lo cante
+		//tampoco si no soy mano y antes de tirar mi carta canto retruco o vale cuatro
+        if((*trucoP != 1 && *seCantoTrucoP == 0)||(*envidoP>0 && *seCantoEnvidoP== 0)
+		||(manoNumero%2==0 && comparar[1][0]!='t' && *seCantoEnvidoP == 0)
+		||(manoNumero%2==0 && comparar[1][0]=='t' && *seCantoTrucoP == 1 && *seCantoEnvidoP == 0)
+		||(manoNumero%2==1 && comparar[1][0]=='t' && *trucoP>2));
         else
         {
 		    if(*envidoP == 0 || *envidoP == 2)
@@ -774,235 +884,40 @@ int *seCantoTrucoP, int *seCantoEnvidoP)
         enviarString("11 para no querer");
     }
 
+	//imprimo el "me voy al mazo" cuando sea posible
+	if(*seCantoEnvidoP == 0 && *seCantoTrucoP ==0)//cuando no se este cantando ni truco ni envido
+	enviarString("12 para irse al mazo");
+
     enviarString("Fin");
 }
 
 void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
-int *puntosClienteP, int manoNumero, int puntosMaximos)
+int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17],
+ char *nombreServer, char *nombreCliente)
 {
 	//calcula quien gano el envido y suma los puntos al ganador
-	int i = 0, envidoServer = 0, envidoCliente = 0,numeros[3], alternativas[]={0,0,0};//inicializo alternativas en 0
-	char *palos[3];
+	int i = 0, flag = 0, numbytes = 0, quienGano = -1, envidoServer = 0, envidoCliente = 0;
+	char  buf[MAXDATASIZE];
 
 	//calculo envido del server
-	for(i = 0;i < 3; i++)
-	{
-		numeros[i] = atoi(strtok(manoServerAux[i], " "));//guardo los numeros de las cartas
-		strtok(NULL, " ");
-		palos[i]= strtok(NULL, " ");//guardo los palos de las cartas
-	}
-
-	if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12)&&
-	(numeros[2]==10 || numeros[2]==11 || numeros[2]==12))//si todas las cartas de la mano son 10,11 o 12
-	{
-		//si al menos 2 cartas comparte palo
-		if(strcmp(palos[0], palos[1])== 0 ||strcmp(palos[1], palos[2])== 0 || strcmp(palos[0], palos[2])== 0)
-		envidoServer = 20;
-		else
-		envidoServer = 0;
-		
-	}
-	else//si existe al menos una carta que no sea ni 10 ni 11 ni 12
-	{
-		//comparo los palos de dos cartas y si hay envido lo cargo en alternativa[0]
-		if(strcmp(palos[0], palos[1])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
-			alternativas[0]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
-			{
-				alternativas[0]=20;
-				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
-				alternativas[0]+=numeros[1];
-				else
-				alternativas[0]+=numeros[0];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[0]=20 + numeros[0] + numeros[1];
-
-		}
-		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[1]
-		if(strcmp(palos[1], palos[2])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			alternativas[1]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			{
-				alternativas[1]=20;
-				if(numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)
-				alternativas[1]+=numeros[2];
-				else
-				alternativas[1]+=numeros[1];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[1]=20 + numeros[1] + numeros[2];
-
-		}
-		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[2]
-		if(strcmp(palos[0], palos[2])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			alternativas[2]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			{
-				alternativas[2]=20;
-				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
-				alternativas[2]+=numeros[2];
-				else
-				alternativas[2]+=numeros[0];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[2]=20 + numeros[0] + numeros[2];
-
-		}
-		//si no hay al menos 2 cartas con el mismo palo
-		if(alternativas[0]==0 && alternativas[1]== 0 && alternativas[2]== 0)
-		{
-			for(i = 0;i < 3;i++)
-			{
-				if(numeros[i] < 10)
-				alternativas[i] = numeros[i];
-			}
-		}
-
-		//comparo las alternativas y me quedo con la mas alta
-
-		for(i = 0;i < 3;i++)
-		{
-			if(envidoServer<alternativas[i])
-			envidoServer=alternativas[i];
-		}
-	}
-
-	//reinicio alternativas
-	alternativas[0]=0;
-	alternativas[1]=0;
-	alternativas[2]=0;
+	envidoServer = calcularEnvido(manoServerAux);
 
 	//calculo envido del cliente
-	for(i = 0;i < 3; i++)
-	{
-		numeros[i] = atoi(strtok(manoClienteAux[i], " "));//guardo los numeros de las cartas
-		strtok(NULL, " ");
-		palos[i]= strtok(NULL, " ");//guardo los palos de las cartas
-	}
-
-	if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12)&&
-	(numeros[2]==10 || numeros[2]==11 || numeros[2]==12))//si todas las cartas de la mano son 10,11 o 12
-	{
-		//si al menos 2 cartas comparte palo
-		if(strcmp(palos[0], palos[1])== 0 ||strcmp(palos[1], palos[2])== 0 || strcmp(palos[0], palos[2])== 0)
-		envidoCliente = 20;
-		else
-		envidoCliente = 0;
-		
-	}
-	else//si existe al menos una carta que no sea ni 10 ni 11 ni 12
-	{
-		//comparo los palos de dos cartas y si hay envido lo cargo en alternativa[0]
-		if(strcmp(palos[0], palos[1])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
-			alternativas[0]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
-			{
-				alternativas[0]=20;
-				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
-				alternativas[0]+=numeros[1];
-				else
-				alternativas[0]+=numeros[0];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[0]=20 + numeros[0] + numeros[1];
-
-		}
-		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[1]
-		if(strcmp(palos[1], palos[2])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			alternativas[1]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			{
-				alternativas[1]=20;
-				if(numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)
-				alternativas[1]+=numeros[2];
-				else
-				alternativas[1]+=numeros[1];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[1]=20 + numeros[1] + numeros[2];
-
-		}
-		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[2]
-		if(strcmp(palos[0], palos[2])== 0)
-		{
-			//si las dos cartas son 10,11 o 12
-			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			alternativas[2]=20;
-			//si una de las dos cartas es un 10,11 o 12
-			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
-			{
-				alternativas[2]=20;
-				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
-				alternativas[2]+=numeros[2];
-				else
-				alternativas[2]+=numeros[0];
-			}
-			//si ninguna de las cartas es un 10,11 o 12
-			else
-			alternativas[2]=20 + numeros[0] + numeros[2];
-
-		}
-		//si no hay al menos 2 cartas con el mismo palo
-		if(alternativas[0]==0 && alternativas[1]== 0 && alternativas[2]== 0)
-		{
-			for(i = 0;i < 3;i++)
-			{
-				if(numeros[i] < 10)
-				alternativas[i] = numeros[i];
-			}
-		}
-		//comparo las alternativas y me quedo con la mas alta
-
-		for(i = 0;i < 3;i++)
-		{
-			if(envidoCliente<alternativas[i])
-			envidoCliente=alternativas[i];
-		}
-	}
-
-	//prueba
-	
-	printf("envidoServer: %d\n", envidoServer);
-	printf("envidoCliente: %d\n", envidoCliente);
-	scanf("%d", &i);
+	envidoCliente = calcularEnvido(manoClienteAux);
 
 	//veo quien tiene mas envido
 	if(envidoServer>envidoCliente)//si gano el server
 	{
-		if(envido == 30)//si es falta envido
+		quienGano=0;
+		if(envido >= 30)//si es falta envido
 		(*puntosServerP)+=(puntosMaximos - (*puntosClienteP));
 		else
 		(*puntosServerP)+=envido;
 	}
 	else if(envidoCliente>envidoServer)//si gano el cliente
 	{
-		if(envido== 30)
+		quienGano=1;
+		if(envido >= 30)
 			(*puntosClienteP)+=(puntosMaximos- (*puntosServerP));
 		else
 			(*puntosClienteP)+=envido;
@@ -1012,19 +927,243 @@ int *puntosClienteP, int manoNumero, int puntosMaximos)
 		//en caso de empate gana el que es mano
 		if((manoNumero%2)== 1)//si es mano el server
 		{
-			if(envido == 30)
+			quienGano=0;
+			if(envido >= 30)
 			(*puntosServerP)+=(puntosMaximos - (*puntosClienteP));
 			else
 			(*puntosServerP)+=envido;
 		}
 		else//si es mano el cliente
 		{
-			if(envido== 30)
+			quienGano=1;
+			if(envido >= 30)
 			(*puntosClienteP)+=(puntosMaximos- (*puntosServerP));
 			else
 			(*puntosClienteP)+=envido;
 		}
 	}
 
+	//imprimo las opciones y envio opciones al cliente
+	if((manoNumero%2)==1)//si es mano el server
+	{
+		flag = 0;//0 significa que es el turno del server
+		enviarFlag(flag);
+		enviarGrilla(*grillaP);
+		system("clear");
+   		imprimirGrilla(*grillaP);
+   		imprimirMano(manoServer);
+		printf("Presione 0 para decir \"Tengo %d\"\n", envidoServer);
+		//pido la opcion por teclado
+		flag = 0;
+		while(flag == 0)
+		{
+			scanf("%d", &i);
+			if(i == 0)
+			flag = 1;
+		}
 
+		flag = 1;//1 significa que es el turno del cliente
+		enviarFlag(flag);
+		enviarGrilla(*grillaP);
+
+		if(quienGano == 0)//si gano el envido el server
+		enviarString("Presione 0 para decir \"Son buenas\"");
+		else//si gano el envido el cliente
+		{
+			strcpy(buf, "Presione 0 para decir \"");
+			if(envidoCliente >=10)//si envidoCliente tiene 2 cifras
+			{
+				buf[strlen(buf)+ 2]='\0';
+				buf[strlen(buf)+ 1]=(envidoCliente % 10)+ 48;
+				buf[strlen(buf)]=(envidoCliente / 10)+ 48;
+			}
+			else
+			{
+				buf[strlen(buf)+ 1]='\0';
+				buf[strlen(buf)]=envidoCliente+ 48;
+			}
+			strcpy(&(buf[strlen(buf)]), " son mejores\"");
+			enviarString(buf);
+
+		}
+		enviarString("Fin");
+		system("clear");
+		imprimirGrilla(*grillaP);
+   		imprimirMano(manoServer);
+		printf("Turno de %s\n", nombreCliente);
+		//recibo la opcion del cliente
+		if ((numbytes = recv( new_fd , &i, sizeof(int),  0 )) == -1  )
+    	{
+        	perror("recv");
+        	close(new_fd);
+        	close(sockfd);
+       	 	exit(1);
+   		}
+
+	}
+	else//si es mano el cliente
+	{
+		//turno del cliente
+		flag = 1;
+		enviarFlag(flag);
+		enviarGrilla(*grillaP);
+		//envio la opcion
+		strcpy(buf, "Presione 0 para decir \"Tengo ");
+		if(envidoCliente >=10)//si tiene mas de dos cifras
+		{
+			buf[strlen(buf)+ 2]='\0';
+			buf[strlen(buf)+ 1]=(envidoCliente % 10)+ 48;
+			buf[strlen(buf)]=(envidoCliente / 10)+ 48;
+		}
+		else//si tiene una sola cifra
+		{
+			buf[strlen(buf)+ 1]='\0';
+			buf[strlen(buf)]=envidoCliente+ 48;
+		}
+		buf[strlen(buf)+ 1]='\0';
+		buf[strlen(buf)]='\"';
+		enviarString(buf);
+		enviarString("Fin");
+
+		system("clear");
+		imprimirGrilla(*grillaP);
+   		imprimirMano(manoServer);
+		printf("Turno de %s\n", nombreCliente);
+		//recibo la opcion del cliente
+		if ((numbytes = recv( new_fd , &i, sizeof(int),  0 )) == -1  )
+    	{
+        	perror("recv");
+        	close(new_fd);
+        	close(sockfd);
+       	 	exit(1);
+   		}
+		//turno del server
+		flag = 0;
+		enviarFlag(flag);
+		enviarGrilla(*grillaP);
+		system("clear");
+   		imprimirGrilla(*grillaP);
+   		imprimirMano(manoServer);
+		if(quienGano == 0)//si gano el envido el server
+		printf("Presione 0 para decir \"%d son mejores\"\n", envidoServer);
+		else
+		printf("Presione 0 para decir \"Son buenas\"\n");
+		//pido la opcion por teclado
+		flag = 0;
+		while(flag == 0)
+		{
+			scanf("%d", &i);
+			if(i == 0)//verifico la opcion
+			flag = 1;
+		}
+	}
+	//actualizo los puntos
+	actualizarGrilla(grillaP, *puntosServerP, *puntosClienteP, nombreServer, nombreCliente);
+}
+
+int calcularEnvido(char manoAux[3][17])
+{
+	//calcula el envido de la manoAux
+	int i = 0, envido= 0 ,numeros[3], alternativas[]={0,0,0};//inicializo alternativas en 0
+	char *palos[3];
+
+	for(i = 0;i < 3; i++)
+	{
+		numeros[i] = atoi(strtok(manoAux[i], " "));//guardo los numeros de las cartas
+		strtok(NULL, " ");
+		palos[i]= strtok(NULL, " ");//guardo los palos de las cartas
+	}
+
+	if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12)&&
+	(numeros[2]==10 || numeros[2]==11 || numeros[2]==12))//si todas las cartas de la mano son 10,11 o 12
+	{
+		//si al menos 2 cartas comparte palo
+		if(strcmp(palos[0], palos[1])== 0 ||strcmp(palos[1], palos[2])== 0 || strcmp(palos[0], palos[2])== 0)
+		envido = 20;
+		else
+		envido = 0;
+		
+	}
+	else//si existe al menos una carta que no sea ni 10 ni 11 ni 12
+	{
+		//comparo los palos de dos cartas y si hay envido lo cargo en alternativa[0]
+		if(strcmp(palos[0], palos[1])== 0)
+		{
+			//si las dos cartas son 10,11 o 12
+			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
+			alternativas[0]=20;
+			//si una de las dos cartas es un 10,11 o 12
+			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[1]==10 || numeros[1]==11 || numeros[1]== 12))
+			{
+				alternativas[0]=20;
+				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
+				alternativas[0]+=numeros[1];
+				else
+				alternativas[0]+=numeros[0];
+			}
+			//si ninguna de las cartas es un 10,11 o 12
+			else
+			alternativas[0]=20 + numeros[0] + numeros[1];
+
+		}
+		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[1]
+		if(strcmp(palos[1], palos[2])== 0)
+		{
+			//si las dos cartas son 10,11 o 12
+			if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
+			alternativas[1]=20;
+			//si una de las dos cartas es un 10,11 o 12
+			else if((numeros[1]==10 || numeros[1]== 11 || numeros[1]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
+			{
+				alternativas[1]=20;
+				if(numeros[1]==10 || numeros[1]== 11 || numeros[1]==12)
+				alternativas[1]+=numeros[2];
+				else
+				alternativas[1]+=numeros[1];
+			}
+			//si ninguna de las cartas es un 10,11 o 12
+			else
+			alternativas[1]=20 + numeros[1] + numeros[2];
+
+		}
+		//comparo los palos de otras dos cartas y si hay envido lo cargo en alternativa[2]
+		if(strcmp(palos[0], palos[2])== 0)
+		{
+			//si las dos cartas son 10,11 o 12
+			if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)&&(numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
+			alternativas[2]=20;
+			//si una de las dos cartas es un 10,11 o 12
+			else if((numeros[0]==10 || numeros[0]== 11 || numeros[0]==12 || numeros[2]==10 || numeros[2]==11 || numeros[2]== 12))
+			{
+				alternativas[2]=20;
+				if(numeros[0]==10 || numeros[0]== 11 || numeros[0]==12)
+				alternativas[2]+=numeros[2];
+				else
+				alternativas[2]+=numeros[0];
+			}
+			//si ninguna de las cartas es un 10,11 o 12
+			else
+			alternativas[2]=20 + numeros[0] + numeros[2];
+
+		}
+		//si no hay al menos 2 cartas con el mismo palo
+		if(alternativas[0]==0 && alternativas[1]== 0 && alternativas[2]== 0)
+		{
+			for(i = 0;i < 3;i++)
+			{
+				if(numeros[i] < 10)
+				alternativas[i] = numeros[i];
+			}
+		}
+
+		//comparo las alternativas y me quedo con la mas alta
+
+		for(i = 0;i < 3;i++)
+		{
+			if(envido<alternativas[i])
+			envido=alternativas[i];
+		}
+	}
+
+	return envido;
 }

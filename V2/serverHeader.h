@@ -5,7 +5,7 @@
 #define MAXDATASIZE 100     // m�ximo n�mero de bytes que se pueden leer de una vez
 
 //variables globales
-int sockfd, new_fd;
+int sockfd, new_fd;	// Escuchar sobre sock_fd, conexion del cliente sobre new_fd
 
 //struct
 typedef struct carta
@@ -44,20 +44,25 @@ void enviarGrilla(char grilla[4][90]);
 void enviarFlag(int flag);
 
 int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char grillaP[][4][90], int j, int *envidoP,int *trucoP,
-int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP);
+ int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP, int * puntosClienteP, int puntosServer, char *nombreServer,
+ char *nombreCliente, int *flag1P, int *quienTieneElQuieroP, int manoNumero);
 
-int quienGano(CARTA *mazo, char comparar[2][17]);
+void quienGano(CARTA *mazo, char comparar[2][17], int *primeraP, int *segundaP, int *terceraP, int h);
 
 void actualizarGrilla(char grilla[][4][90], int puntosServer, int puntosCliente, char *nombreServer, char *nombreCliente);
 
 void limpiarGrilla(char grilla[][4][90],int puntosServer, int puntosCliente, char *nombreServer, char *nombreCliente, int puntosMaximos);
 
 void enviarOpciones(char manoClienteP[][3][17], int j, int *envidoP,int *trucoP,
-int *seCantoTrucoP, int *seCantoEnvidoP);
+int *seCantoTrucoP, int *seCantoEnvidoP, int *quienTieneElQuieroP, int manoNumero, char comparar[2][17]);
 
 void recibirOpcionYActualizar(int *opcionClienteP, char manoClienteP[][3][17], char compararP[][2][17],
-char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP, int *hayQueProcesarEnvidoP);
+char grillaP[][4][90], int j, int *envidoP,int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP,
+int *hayQueProcesarEnvidoP, int * puntosServerP, int puntosCliente, char *nombreServer, char *nombreCliente,
+int *flag1P,int *quienTieneElQuieroP);
 
-void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP, int *puntosClienteP, int manoNumero,
-int puntosMaximos);
+int calcularEnvido(char manoAux[3][17]);
+
+void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
+int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17], char *nombreServer,char *nombreCliente);
 
