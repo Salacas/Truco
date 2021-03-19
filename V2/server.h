@@ -66,3 +66,7 @@ int calcularEnvido(char manoAux[3][17]);
 void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
 int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17], char *nombreServer,char *nombreCliente);
 
+void imprimirEstado(char manoClienteAux[3][17], int *opcionClienteP, char *nombreCliente);
+
+void enviarEstado(char manoServerAux[3][17], int *opcionServerP, char *nombreServer);
+

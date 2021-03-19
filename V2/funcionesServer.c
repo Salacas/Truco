@@ -10,7 +10,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <time.h>
-#include "serverHeader.h"
+#include "server.h"
 
 void enviarCartas(char manoCliente[][3][17])
 {
@@ -965,6 +965,7 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 		flag = 1;//1 significa que es el turno del cliente
 		enviarFlag(flag);
 		enviarGrilla(*grillaP);
+		enviarString("Nada");//suplanta a enviarEstado
 
 		if(quienGano == 0)//si gano el envido el server
 		enviarString("Presione 0 para decir \"Son buenas\"");
@@ -989,8 +990,8 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 		enviarString("Fin");
 		system("clear");
 		imprimirGrilla(*grillaP);
-   		imprimirMano(manoServer);
 		printf("Turno de %s\n", nombreCliente);
+		imprimirMano(manoServer);
 		//recibo la opcion del cliente
 		if ((numbytes = recv( new_fd , &i, sizeof(int),  0 )) == -1  )
     	{
@@ -1007,6 +1008,7 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 		flag = 1;
 		enviarFlag(flag);
 		enviarGrilla(*grillaP);
+		enviarString("Nada");//suplanta a enviarEstado
 		//envio la opcion
 		strcpy(buf, "Presione 0 para decir \"Tengo ");
 		if(envidoCliente >=10)//si tiene mas de dos cifras
@@ -1027,8 +1029,8 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 
 		system("clear");
 		imprimirGrilla(*grillaP);
-   		imprimirMano(manoServer);
 		printf("Turno de %s\n", nombreCliente);
+		imprimirMano(manoServer);
 		//recibo la opcion del cliente
 		if ((numbytes = recv( new_fd , &i, sizeof(int),  0 )) == -1  )
     	{
@@ -1063,7 +1065,7 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 
 int calcularEnvido(char manoAux[3][17])
 {
-	//calcula el envido de la manoAux
+	//calcula y devuelve el envido de la manoAux
 	int i = 0, envido= 0 ,numeros[3], alternativas[]={0,0,0};//inicializo alternativas en 0
 	char *palos[3];
 
@@ -1166,4 +1168,87 @@ int calcularEnvido(char manoAux[3][17])
 	}
 
 	return envido;
+}
+
+void imprimirEstado(char manoClienteAux[3][17], int *opcionClienteP, char *nombreCliente)
+{
+	//imprime la ultima accion del cliente en la pantalla del server, cuando es el turno del mismo.
+	printf("\n");
+
+	if(*opcionClienteP == 1 || *opcionClienteP == 2 || *opcionClienteP == 3)
+	printf("%s: \"Tiro el %s\"\n", nombreCliente, manoClienteAux[(*opcionClienteP) - 1]);
+
+	if(*opcionClienteP == 4)
+	printf("%s: \"Truco\"\n", nombreCliente);
+	if(*opcionClienteP == 5)
+	printf("%s: \"Retruco\"\n", nombreCliente);
+	if(*opcionClienteP == 6)
+	printf("%s: \"Quiero vale cuatro\"\n", nombreCliente);
+
+	if(*opcionClienteP == 7)
+	printf("%s: \"Envido\"\n", nombreCliente);
+	if(*opcionClienteP == 8)
+	printf("%s: \"Real envido\"\n", nombreCliente);
+	if(*opcionClienteP == 9)
+	printf("%s: \"Falta envido\"\n", nombreCliente);
+
+	if(*opcionClienteP == 10)
+	printf("%s: \"Quiero\"\n", nombreCliente);
+	if(*opcionClienteP == 11)
+	printf("%s: \"No quiero\"\n", nombreCliente);
+
+	if(*opcionClienteP == 12)
+	printf("%s: \"Me voy al mazo\"\n", nombreCliente);
+
+	//reinicio la variable para evitar imprimir mas de una vez lo mismo
+	(*opcionClienteP)=-1;
+}
+
+void enviarEstado(char manoServerAux[3][17], int *opcionServerP, char *nombreServer)
+{
+	char buf[MAXDATASIZE];
+
+	if(*opcionServerP != -1)
+	{
+		strcpy(buf, nombreServer);
+		strcpy(&(buf[strlen(buf)]), ": \"");
+
+		if(*opcionServerP == 1 || *opcionServerP == 2 ||*opcionServerP == 3)
+		{
+			strcpy(&(buf[strlen(buf)]), "Tiro el ");
+			strcpy(&(buf[strlen(buf)]), manoServerAux[(*opcionServerP) - 1]);
+			strcpy(&(buf[strlen(buf)]), "\"");
+		}
+
+		if(*opcionServerP == 4)
+		strcpy(&(buf[strlen(buf)]), "Truco\"");
+		if(*opcionServerP == 5)
+		strcpy(&(buf[strlen(buf)]), "Retruco\"");
+		if(*opcionServerP == 6)
+		strcpy(&(buf[strlen(buf)]), "Quiero vale cuatro\"");
+
+		if(*opcionServerP == 7)
+		strcpy(&(buf[strlen(buf)]), "Envido\"");
+		if(*opcionServerP == 8)
+		strcpy(&(buf[strlen(buf)]), "Real envido\"");
+		if(*opcionServerP == 9)
+		strcpy(&(buf[strlen(buf)]), "Falta envido\"");
+
+		if(*opcionServerP == 10)
+		strcpy(&(buf[strlen(buf)]), "Quiero\"");
+		if(*opcionServerP == 11)
+		strcpy(&(buf[strlen(buf)]), "No quiero\"");
+
+		if(*opcionServerP == 12)
+		strcpy(&(buf[strlen(buf)]), "Me voy al mazo\"");
+
+		enviarString(buf);
+
+		//reinicio la variable para evitar imprimir mas de una vez lo mismo
+		(*opcionServerP) = -1;
+	}
+	else
+	enviarString("Nada");
+	
+
 }
