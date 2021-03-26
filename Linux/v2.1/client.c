@@ -8,13 +8,14 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdio_ext.h>
 #include "client.h"
 
 int main(int argc, char *argv[])
 {
 	struct in_addr addr;
 	int  manonumero = 0, flag = 0;
-	char  nombreServer[MAXDATASIZE], nombreCliente[MAXDATASIZE], buf[MAXDATASIZE];
+	char  nombreServer[12], nombreCliente[12], buf[MAXDATASIZE];
 	struct sockaddr_in their_addr;
    	char manoCliente[3][17];
     char grilla[4][90];
@@ -53,9 +54,11 @@ int main(int argc, char *argv[])
     //inicio de conexion--------------------------------------------------------------------
 	printf("Conexion exitosa con el servidor\n");
 	printf("Ingrese su nombre: ");
-    scanf("%s", nombreCliente);
+    __fpurge(stdin);
+    fgets(nombreCliente, 12, stdin);
+    nombreCliente[strcspn(nombreCliente, "\n")] = '\0';//le saco el \n
 
-    recibirString(&nombreServer);//recibo el nombre del jugador server
+    recibirString(nombreServer);//recibo el nombre del jugador server
     enviarString(nombreCliente);//envio el nombre del jugador cliente
 
     while(flag != 3)//flag = 3 significa que termino el juego
@@ -66,10 +69,13 @@ int main(int argc, char *argv[])
         {
             system("clear");
             recibirGrilla(&grilla);
-            revertirGrilla(&grilla);
             imprimirGrilla(grilla);
             imprimirMano(manoCliente);
-            printf("Ha finalizado el partido\n");
+            recibirString(buf);//recibo el mensaje del server
+            if(strcmp(buf, "Nada")!=0)//lo imprimo si tengo que hacerlo
+            printf("%s\n\n", buf);
+            recibirString(buf);//quien gano
+            printf("%s\n", buf);
         }
         else if(flag == 2)//empieza una mano
         {
@@ -77,9 +83,13 @@ int main(int argc, char *argv[])
             if(manonumero != 1)
             {
                 system("clear");
+                recibirGrilla(&grilla);
                 imprimirGrilla(grilla);
                 imprimirMano(manoCliente);
-                printf("\nFinalizo la mano\n");
+                recibirString(buf);//recibo el mensaje del server
+                if(strcmp(buf, "Nada")!=0)//lo imprimo si tengo que hacerlo
+                printf("%s\n\n", buf);
+                printf("Finalizo la mano\n");
                 sleep(4);
             }
             recibirCartas(&manoCliente);
@@ -88,24 +98,24 @@ int main(int argc, char *argv[])
         {
             system("clear");
             recibirGrilla(&grilla);
-            revertirGrilla(&grilla);
             imprimirGrilla(grilla);
-            printf("Turno de %s\n", nombreServer);
             imprimirMano(manoCliente);
+            recibirString(buf);//recibo el mensaje del server
+            if(strcmp(buf, "Nada")!=0)//lo imprimo si tengo que hacerlo
+            printf("%s\n\n", buf);
+            printf("Turno de %s\n", nombreServer);
         }
         else if(flag == 1)//turno del cliente
         {
             system("clear");
             recibirGrilla(&grilla);
-            revertirGrilla(&grilla);
             imprimirGrilla(grilla);
-            recibirString(&buf);
-            if(strcmp(buf, "Nada")!=0)
-            printf("\n%s\n", buf);
             imprimirMano(manoCliente);
+            recibirString(buf);
+            if(strcmp(buf, "Nada")!=0)
+            printf("%s\n\n", buf);
             imprimirOpciones(&manoCliente);
         }
-
     }
 
 	close(sockfd);

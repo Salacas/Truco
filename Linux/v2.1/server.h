@@ -64,9 +64,18 @@ int *flag1P,int *quienTieneElQuieroP);
 int calcularEnvido(char manoAux[3][17]);
 
 void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
-int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17], char *nombreServer,char *nombreCliente);
+int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17], char *nombreServer,char *nombreCliente,
+int *opcionServerP);
 
 void imprimirEstado(char manoClienteAux[3][17], int *opcionClienteP, char *nombreCliente);
 
 void enviarEstado(char manoServerAux[3][17], int *opcionServerP, char *nombreServer);
 
+void turnoDelServer(char grillaP[][4][90], char manoServerAux[3][17], char manoClienteAux[3][17], int *opcionServerP, int *opcionClienteP,
+char *nombreServer,char *nombreCliente, char manoServerP[][3][17], char compararP[][2][17], int i, int *envidoP, int *trucoP, int *seCantoTrucoP,
+int *seCantoEnvidoP, int *hayQueProcesarEnvidoP, int *puntosClienteP, int *puntosServerP, int *flagP,int *flag1P, int *quienTieneElQuieroP, int manoNumero );
+
+void turnoDelCliente(char grillaP[][4][90], char manoServerAux[3][17], char manoClienteAux[3][17], int *opcionServerP, int *opcionClienteP, char *nombreServer,
+ char* nombreCliente, char manoClienteP[][3][17],int i, int *envidoP, int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP,
+ int *quienTieneElQuieroP, int manoNumero, char compararP[][2][17], char manoServer[3][17],
+ int *hayQueProcesarEnvidoP, int *puntosServerP, int puntosCliente, int *flagP, int *flag1P);

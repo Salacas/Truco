@@ -9,15 +9,15 @@ void recibirCartas(char manoCliente[][3][17] );
 
 void enviarString(char *buf);
 
-void recibirString(char buf[][100]);
+void recibirString(char *buf);
 
 void imprimirMano(char manoCliente[3][17]);
 
-void recibirGrilla(char grilla[][4][90]);
+void recibirGrilla(char grillaP[][4][90]);
 
 void imprimirGrilla(char grilla[4][90]);
 
-void revertirGrilla(char grilla[][4][90]);
+void revertirGrilla(char grillaP[][4][90]);
 
 void recibirFlag(int *flagp);
 

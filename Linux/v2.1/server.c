@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <time.h>
+#include <stdio_ext.h>
 #include "server.h"
 
 int main( void )
@@ -19,8 +20,8 @@ int main( void )
 	socklen_t sin_size;
 	int manoNumero = 1, yes = 1, flag = 0, puntosServer = 0, puntosCliente = 0, puntosMaximos = 0, i = 0, opcionCliente = -1,
 	primera = 0, segunda = 0, tercera = 0, envido = 0, truco = 0, seCantoTruco = 0, seCantoEnvido = 0, hayQueProcesarEnvido = 0,
-	flag1 = 0, quienTieneElQuiero = -1, opcionServer = -1;
-    char  nombreServer[MAXDATASIZE], nombreCliente[MAXDATASIZE];
+	flag1 = 0, quienTieneElQuiero = -1, opcionServer = -1, auxFlag = -1;
+    char  nombreServer[12], nombreCliente[12], buf[MAXDATASIZE];
     CARTA mazo[40];//el mazo tiene 40 cartas
     char *numero[]={"1", "2", "3", "4", "5", "6", "7", "10", "11", "12"};
    	char *palo[]= {"Espada", "Basto", "Oro", "Copa"};
@@ -78,14 +79,17 @@ int main( void )
 	
 	printf("Conexion desde %s\n", inet_ntoa(their_addr.sin_addr));
 	printf("Ingrese su nombre: ");
-	scanf("%s", nombreServer);
+	__fpurge(stdin);
+    fgets(nombreServer, 12, stdin);
+    nombreServer[strcspn(nombreServer, "\n")] = '\0';//le saco el \n
 
 	while(flag == 0)//para cubrir errores del usuario
 	{
 		printf("A cuantos puntos quiere jugar?\n");
 		printf("Ingrese ""15"" o ""30"":");
-		scanf("%d", &puntosMaximos);
-
+		__fpurge(stdin);
+		fgets(buf, 4, stdin);
+		puntosMaximos = atoi(buf);
 		if(puntosMaximos == 15 || puntosMaximos == 30)
 			flag = 1;
 		else
@@ -101,6 +105,23 @@ int main( void )
 
 	while(flag != 3)//flag = 3 significa que termino el juego
 	{
+		auxFlag = flag;//para saber quien fue el ultimo en jugar
+   		flag = 2;
+   		enviarFlag(flag);
+
+		//si no es la primer mano espero para que el server vea como termino la mano
+		//ademas envio la grilla para que el cliente vea como termino la mano
+		if (manoNumero != 1)
+		{
+			enviarGrilla(grilla);
+			if(auxFlag == 0)//si el server fue el ultimo en tirar
+			enviarEstado(manoServerAux, &opcionServer, nombreServer);
+			else if(auxFlag == 1)//si fue el cliente
+			enviarString("Nada");
+			limpiarGrilla(&grilla, puntosServer, puntosCliente, nombreServer, nombreCliente, puntosMaximos);
+			sleep(4);
+		}
+		//mezclo y reparto las nuevas cartas
 		mezclar(mazo);
    		repartir(mazo, &manoServer, &manoCliente);
 
@@ -109,13 +130,7 @@ int main( void )
 			strcpy(manoServerAux[i], manoServer[i]);
 			strcpy(manoClienteAux[i], manoCliente[i]);
 		}
-	
-   		flag = 2;
-   		enviarFlag(flag);
-   		enviarCartas(&manoCliente);
-		//si no es la primer mano espero para que el server vea como termino la mano
-		if(manoNumero != 1)
-		sleep(4);
+		enviarCartas(&manoCliente);
 		system("clear");//limpio la pantalla
 		//reinicio variables;
 		//primera, segunda y tercera indican el estado de la mano
@@ -146,7 +161,7 @@ int main( void )
 			{
 				do
 				{	
-					//si no se quiso el envido
+					//si no se quiso el envido0
 					if(envido > 0 && envido < 100 && seCantoEnvido == 0)
 					{//es para evitar bugs al no aceptar el envido
 						envido = 100;//le pongo 100 para no pasar de vuelta por este if
@@ -155,23 +170,14 @@ int main( void )
 					else if(truco>1 && seCantoTruco == 0 && comparar[0][0]!='t');
 					else
 					{
-						//turno del server
-						enviarFlag(0);
-						enviarGrilla(grilla);
-						system("clear");
-   						imprimirGrilla(grilla);
-						imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   						imprimirMano(manoServer);
-						opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-						&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-						puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
-						imprimirGrilla(grilla);
-						imprimirMano(manoServer);
+						turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+						nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+						&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag, &flag1, &quienTieneElQuiero, manoNumero );
 					}
 					if(hayQueProcesarEnvido == 1)//si se acepto el envido
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente);
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
 						opcionCliente = -1;
 						opcionServer = -1;
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos)flag1=1;
@@ -187,24 +193,15 @@ int main( void )
 					if(flag1 == 1)//si no se acepto el truco, alguien se fue al mazo o alguien gano el partido con el envido
 					continue;
 
-					//turno del cliente
-					enviarFlag(1);
-					enviarGrilla(grilla);
-					enviarEstado(manoServerAux, &opcionServer, nombreServer);
-					enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-					manoNumero, comparar);
-					system("clear");
-					imprimirGrilla(grilla);
-					printf("Turno de %s\n", nombreCliente);
-					imprimirMano(manoServer);
-					recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-					&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-					nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+					turnoDelCliente(&grilla, manoServerAux, manoClienteAux, &opcionServer, &opcionCliente, nombreServer,
+ 					nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 					&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 					&hayQueProcesarEnvido, &puntosServer, puntosCliente, &flag,&flag1);
 
 					if(hayQueProcesarEnvido == 1)
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente );
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
 						opcionCliente = -1;
 						opcionServer = -1;
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
@@ -225,34 +222,18 @@ int main( void )
 					if(truco>1 && seCantoTruco == 0 && comparar[1][0]!='t');
 					else
 					{
-						//turno del cliente
-						enviarFlag(1);
-						enviarGrilla(grilla);
-						enviarEstado(manoServerAux, &opcionServer, nombreServer);
-						enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-						manoNumero, comparar);
-						system("clear");
-						imprimirGrilla(grilla);
-						printf("Turno de %s\n", nombreCliente);
-						imprimirMano(manoServer);
-						recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-						&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-						nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+						turnoDelCliente(&grilla, manoServerAux, manoClienteAux,&opcionServer, &opcionCliente, nombreServer,
+ 						nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 						&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 						&hayQueProcesarEnvido, &puntosServer, puntosCliente, &flag,&flag1);
 					}
 
 					if(truco>1 && seCantoTruco == 0 && comparar[1][0]=='t')continue;
 					if(flag1 == 1)continue;
 
-					//turno del server
-					enviarFlag(0);
-					enviarGrilla(grilla);
-					system("clear");
-   					imprimirGrilla(grilla);
-					imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   					imprimirMano(manoServer);
-					opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-					&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-					puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
+					turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+					nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+					&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag,&flag1, &quienTieneElQuiero, manoNumero );
 				}
 				while((comparar[0][0]=='t'||comparar[1][0]=='t')&&(flag1 == 0));
 
@@ -267,36 +248,18 @@ int main( void )
 				{
 					if(truco>1 && seCantoTruco == 0 && comparar[0][0]!='t');
 					else{
-						//turno del server
-						enviarFlag(0);
-						enviarGrilla(grilla);
-						system("clear");
-   						imprimirGrilla(grilla);
-						imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   						imprimirMano(manoServer);
-						opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-						&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-						puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
-						imprimirGrilla(grilla);
-						imprimirMano(manoServer);
+						turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+						nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+						&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag,&flag1, &quienTieneElQuiero, manoNumero );
 					}
 
 					if(truco>1 && seCantoTruco == 0 && comparar[0][0]=='t')continue;
 					if(flag1 == 1)continue;
 					
-					//turno del cliente
-					enviarFlag(1);
-					enviarGrilla(grilla);
-					enviarEstado(manoServerAux, &opcionServer, nombreServer);
-					enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-					manoNumero, comparar);
-					system("clear");
-					imprimirGrilla(grilla);
-					printf("Turno de %s\n", nombreCliente);
-					imprimirMano(manoServer);
-					recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-					&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-					nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+					turnoDelCliente(&grilla, manoServerAux, manoClienteAux,&opcionServer, &opcionCliente, nombreServer,
+ 					nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 					&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 					&hayQueProcesarEnvido, &puntosServer, puntosCliente,&flag, &flag1);
 
 				}
 				while((comparar[0][0]=='t'||comparar[1][0]=='t')&&(flag1 == 0));
@@ -323,25 +286,16 @@ int main( void )
 					else if(truco>1 && seCantoTruco == 0 && comparar[1][0]!='t');
 					else
 					{
-						//turno del cliente
-						enviarFlag(1);
-						enviarGrilla(grilla);
-						enviarEstado(manoServerAux, &opcionServer, nombreServer);
-						enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-						manoNumero, comparar);
-						system("clear");
-						imprimirGrilla(grilla);
-						printf("Turno de %s\n", nombreCliente);
-						imprimirMano(manoServer);
-						recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-						&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-						nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+						turnoDelCliente(&grilla, manoServerAux, manoClienteAux, &opcionServer, &opcionCliente, nombreServer,
+ 						nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 						&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 						&hayQueProcesarEnvido, &puntosServer, puntosCliente, &flag,&flag1);
 					}
 
 					if(hayQueProcesarEnvido == 1)//si se acepto el envido
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer, nombreCliente);
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
 						opcionCliente = -1;
 						opcionServer = -1;
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
@@ -356,23 +310,14 @@ int main( void )
 					if(truco>1 && seCantoTruco == 0 && comparar[1][0]=='t')continue;
 					if(flag1 == 1)continue;
 					
-					//turno del server
-					enviarFlag(0);
-					enviarGrilla(grilla);
-					system("clear");
-   					imprimirGrilla(grilla);
-					imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   					imprimirMano(manoServer);
-					opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-					&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-					puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
-					imprimirGrilla(grilla);
-					imprimirMano(manoServer);
+					turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+					nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+					&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag,&flag1, &quienTieneElQuiero, manoNumero );
 
 					if(hayQueProcesarEnvido == 1)
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente);
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
 						opcionCliente = -1;
 						opcionServer = -1;
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
@@ -392,36 +337,18 @@ int main( void )
 				{
 					if(truco>1 && seCantoTruco == 0 && comparar[0][0]!='t');
 					else{
-						//turno del server
-						enviarFlag(0);
-						enviarGrilla(grilla);
-						system("clear");
-   						imprimirGrilla(grilla);
-						imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   						imprimirMano(manoServer);
-						opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-						&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-						puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
-						imprimirGrilla(grilla);
-						imprimirMano(manoServer);
+						turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+						nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+						&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag,&flag1, &quienTieneElQuiero, manoNumero );
 					}
 
 					if(truco>1 && seCantoTruco == 0 && comparar[0][0]=='t')continue;
 					if(flag1 == 1)continue;
 
-					//turno del cliente
-					enviarFlag(1);
-					enviarGrilla(grilla);
-					enviarEstado(manoServerAux, &opcionServer, nombreServer);
-					enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-					manoNumero, comparar);
-					system("clear");
-					imprimirGrilla(grilla);
-					printf("Turno de %s\n", nombreCliente);
-					imprimirMano(manoServer);
-					recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-					&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-					nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+					turnoDelCliente(&grilla, manoServerAux, manoClienteAux, &opcionServer, &opcionCliente, nombreServer,
+ 					nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 					&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 					&hayQueProcesarEnvido, &puntosServer, puntosCliente,&flag, &flag1);
 
 				} 
 				while ((comparar[0][0]=='t'||comparar[1][0]=='t')&&(flag1 == 0));
@@ -437,36 +364,18 @@ int main( void )
 				{
 					if(truco>1 && seCantoTruco == 0 && comparar[1][0]!='t');
 					else{
-						//turno del cliente
-						enviarFlag(1);
-						enviarGrilla(grilla);
-						enviarEstado(manoServerAux, &opcionServer, nombreServer);
-						enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
-						manoNumero, comparar);
-						system("clear");
-						imprimirGrilla(grilla);
-						printf("Turno de %s\n", nombreCliente);
-						imprimirMano(manoServer);
-						recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
-						&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
-						nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+						turnoDelCliente(&grilla, manoServerAux,manoClienteAux, &opcionServer, &opcionCliente, nombreServer,
+ 						nombreCliente, &manoCliente,i, &envido, &truco, &seCantoTruco, &seCantoEnvido,
+ 						&quienTieneElQuiero, manoNumero, &comparar, manoServer,
+ 						&hayQueProcesarEnvido, &puntosServer, puntosCliente,&flag, &flag1);
 					}
 
 				    if(truco>1 && seCantoTruco == 0 && comparar[1][0]=='t')continue;
 					if(flag1 == 1)continue;
 
-					//turno del server
-					enviarFlag(0);
-					enviarGrilla(grilla);
-					system("clear");
-   					imprimirGrilla(grilla);
-					imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
-   					imprimirMano(manoServer);
-					opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
-					&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
-					puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
-					imprimirGrilla(grilla);
-					imprimirMano(manoServer);
+					turnoDelServer(&grilla, manoServerAux,manoClienteAux,&opcionServer, &opcionCliente,nombreServer,
+					nombreCliente, &manoServer,&comparar, i, &envido, &truco, &seCantoTruco,&seCantoEnvido, 
+					&hayQueProcesarEnvido, &puntosCliente, &puntosServer, &flag,&flag1, &quienTieneElQuiero, manoNumero );
 				} 
 				while ((comparar[0][0]=='t'||comparar[1][0]=='t')&&(flag1 == 0));
 				
@@ -496,27 +405,58 @@ int main( void )
 		}
 
 		//veo si alguien gano
-		if(puntosServer == puntosMaximos)
+		if(puntosServer >= puntosMaximos)
 		{
+			auxFlag = flag;
 			flag = 3;
 			enviarFlag(flag);
-			printf("%s ha ganado el partido", nombreServer);
-			enviarString("Server ha ganado la partida");
-		}
-		else if(puntosCliente == puntosMaximos)
-		{
-			flag = 3;
-			enviarFlag(flag);
-			printf("%s ha ganado el partido", nombreCliente);
-			enviarString("Cliente ha ganado la partida");
-		}
+			enviarGrilla(grilla);
+			system("clear");
+			imprimirGrilla(grilla);
+			imprimirMano(manoServer);
+			if(auxFlag == 1)//si el ultimo en tirar fue el cliente
+			{
+				imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
+				enviarString("Nada");
+			}
+			else if(auxFlag == 0)
+			enviarEstado(manoServerAux, &opcionServer, nombreServer);
 
-		system("clear");
-		imprimirGrilla(grilla);
-		imprimirMano(manoServer);
-		printf("Finalizo la mano\n");
-		limpiarGrilla(&grilla, puntosServer, puntosCliente, nombreServer, nombreCliente, puntosMaximos);
-		manoNumero++;
+			printf("\n%s ha ganado el partido\n", nombreServer);
+			sprintf(buf, "%s ha ganado el partido", nombreServer);
+			enviarString(buf);
+		}
+		else if(puntosCliente >= puntosMaximos)
+		{
+			auxFlag = flag;
+			flag = 3;
+			enviarFlag(flag);
+			enviarGrilla(grilla);
+			system("clear");
+			imprimirGrilla(grilla);
+			imprimirMano(manoServer);
+			if(auxFlag == 1)//si el ultimo en tirar fue el cliente
+			{
+				imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
+				enviarString("Nada");
+			}
+			else if(auxFlag == 0)
+			enviarEstado(manoServerAux, &opcionServer, nombreServer);
+
+			printf("\n%s ha ganado el partido\n", nombreCliente);
+			sprintf(buf, "%s ha ganado el partido", nombreCliente);
+			enviarString(buf);
+		}
+		else//si nadie gano
+		{
+			system("clear");
+			imprimirGrilla(grilla);
+			imprimirMano(manoServer);
+			if(flag == 1)//si el ultimo en tirar fue el cliente
+			imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
+			printf("Finalizo la mano\n");
+			manoNumero++;
+		}
 
 	}
 

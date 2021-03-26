@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <time.h>
+#include <stdio_ext.h>
 #include "server.h"
 
 void enviarCartas(char manoCliente[][3][17])
@@ -265,7 +266,7 @@ void imprimirMano(char manoServer[3][17])
 	//imprime las cartas que no tengan la x
 	int i = 0;
 
-	fflush(stdin);
+	__fpurge(stdin);
 
 	printf("\nSu mano: ");
 	for(i = 0; i < 3;i++)
@@ -392,8 +393,8 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
     // 7 cantar envido, 8 cantar real envido, 9 cantar falta envido
     // 10 querer, 11 no querer y 12 irse al mazo
 	int i = 0, salida = 0, flag = 0, cantOpciones = 0, opciones[MAXDATASIZE];
+	char buf[MAXDATASIZE];
 
-	fflush(stdin);
 	printf("Presione:\n");
 
 	//imprimo las opciones para tirar cartas
@@ -505,7 +506,9 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
     //pido por teclado la opcion
 	while(flag == 0)
 	{
-		scanf("%d", &salida);//guardo la opcion elegida en salida
+		__fpurge(stdin);
+		fgets(buf, 4, stdin);
+		salida = atoi(buf);
 		//compruebo que la opcion sea correcta
 		for(i = 0;i < cantOpciones; i++)
 		{
@@ -601,8 +604,8 @@ int imprimirOpciones(char manoServerP[][3][17], char compararP[][2][17],char gri
 
 		(*puntosClienteP) += (*trucoP);
 
-		if(j == 1 && *envidoP == 0)//si estamos en primera y no se canto el envido
-			(*puntosClienteP) ++;
+		if(j == 1 && *envidoP == 0 && *trucoP == 1)//si estamos en primera, no se canto el envido y tampoco se canto truco
+		(*puntosClienteP) ++;
 
 		actualizarGrilla(grillaP,puntosServer, *puntosClienteP, nombreServer,
 		nombreCliente);
@@ -707,7 +710,7 @@ int *flag1P, int *quienTieneElQuieroP)
 		
 		(*puntosServerP) += (*trucoP);
 
-		if(j == 1 && *envidoP == 0)//si estamos en primera y no se canto el envido
+		if(j == 1 && *envidoP == 0 && *trucoP == 1)//si estamos en primera, no se canto el envido y no se canto truco
 		(*puntosServerP) ++;
 
 		actualizarGrilla(grillaP,*puntosServerP, puntosCliente, nombreServer,
@@ -893,7 +896,7 @@ int *seCantoTrucoP, int *seCantoEnvidoP, int *quienTieneElQuieroP, int manoNumer
 
 void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
 int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17],
- char *nombreServer, char *nombreCliente)
+ char *nombreServer, char *nombreCliente, int *opcionServerP)
 {
 	//calcula quien gano el envido y suma los puntos al ganador
 	int i = 0, flag = 0, numbytes = 0, quienGano = -1, envidoServer = 0, envidoCliente = 0;
@@ -946,9 +949,10 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 	//imprimo las opciones y envio opciones al cliente
 	if((manoNumero%2)==1)//si es mano el server
 	{
-		flag = 0;//0 significa que es el turno del server
-		enviarFlag(flag);
+		//turno del server
+		enviarFlag(0);
 		enviarGrilla(*grillaP);
+		enviarEstado(manoServerAux,opcionServerP ,nombreServer);
 		system("clear");
    		imprimirGrilla(*grillaP);
    		imprimirMano(manoServer);
@@ -957,41 +961,32 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 		flag = 0;
 		while(flag == 0)
 		{
-			scanf("%d", &i);
+			__fpurge(stdin);
+			fgets(buf, 4, stdin);
+			i = atoi(buf);
 			if(i == 0)
 			flag = 1;
+			else
+			printf("Opcion incorrecta, vuelva a ingresarla\n");
 		}
-
-		flag = 1;//1 significa que es el turno del cliente
-		enviarFlag(flag);
+		
+		//turno del cliente
+		enviarFlag(1);
 		enviarGrilla(*grillaP);
-		enviarString("Nada");//suplanta a enviarEstado
-
+		sprintf(buf, "%s: \"Tengo %d\"", nombreServer, envidoServer);
+		enviarString(buf);//envio lo que dijo el server
 		if(quienGano == 0)//si gano el envido el server
 		enviarString("Presione 0 para decir \"Son buenas\"");
 		else//si gano el envido el cliente
 		{
-			strcpy(buf, "Presione 0 para decir \"");
-			if(envidoCliente >=10)//si envidoCliente tiene 2 cifras
-			{
-				buf[strlen(buf)+ 2]='\0';
-				buf[strlen(buf)+ 1]=(envidoCliente % 10)+ 48;
-				buf[strlen(buf)]=(envidoCliente / 10)+ 48;
-			}
-			else
-			{
-				buf[strlen(buf)+ 1]='\0';
-				buf[strlen(buf)]=envidoCliente+ 48;
-			}
-			strcpy(&(buf[strlen(buf)]), " son mejores\"");
+			sprintf(buf, "Presione 0 para decir %d son mejores",envidoCliente);
 			enviarString(buf);
-
 		}
 		enviarString("Fin");
 		system("clear");
 		imprimirGrilla(*grillaP);
-		printf("Turno de %s\n", nombreCliente);
 		imprimirMano(manoServer);
+		printf("Turno de %s\n", nombreCliente);
 		//recibo la opcion del cliente
 		if ((numbytes = recv( new_fd , &i, sizeof(int),  0 )) == -1  )
     	{
@@ -1000,33 +995,17 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
         	close(sockfd);
        	 	exit(1);
    		}
-
 	}
 	else//si es mano el cliente
 	{
 		//turno del cliente
-		flag = 1;
-		enviarFlag(flag);
+		enviarFlag(1);
 		enviarGrilla(*grillaP);
-		enviarString("Nada");//suplanta a enviarEstado
+		enviarEstado(manoServerAux,opcionServerP ,nombreServer);
 		//envio la opcion
-		strcpy(buf, "Presione 0 para decir \"Tengo ");
-		if(envidoCliente >=10)//si tiene mas de dos cifras
-		{
-			buf[strlen(buf)+ 2]='\0';
-			buf[strlen(buf)+ 1]=(envidoCliente % 10)+ 48;
-			buf[strlen(buf)]=(envidoCliente / 10)+ 48;
-		}
-		else//si tiene una sola cifra
-		{
-			buf[strlen(buf)+ 1]='\0';
-			buf[strlen(buf)]=envidoCliente+ 48;
-		}
-		buf[strlen(buf)+ 1]='\0';
-		buf[strlen(buf)]='\"';
+		sprintf(buf, "Presione 0 para decir \"Tengo %d\"",envidoCliente);
 		enviarString(buf);
 		enviarString("Fin");
-
 		system("clear");
 		imprimirGrilla(*grillaP);
 		printf("Turno de %s\n", nombreCliente);
@@ -1040,12 +1019,12 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
        	 	exit(1);
    		}
 		//turno del server
-		flag = 0;
-		enviarFlag(flag);
+		enviarFlag(0);
 		enviarGrilla(*grillaP);
 		system("clear");
    		imprimirGrilla(*grillaP);
    		imprimirMano(manoServer);
+		enviarString("Nada");//para el recibirString del cliente
 		if(quienGano == 0)//si gano el envido el server
 		printf("Presione 0 para decir \"%d son mejores\"\n", envidoServer);
 		else
@@ -1054,9 +1033,13 @@ int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], c
 		flag = 0;
 		while(flag == 0)
 		{
-			scanf("%d", &i);
-			if(i == 0)//verifico la opcion
+			__fpurge(stdin);
+			fgets(buf, 4, stdin);
+			i = atoi(buf);
+			if(i == 0)
 			flag = 1;
+			else
+			printf("Opcion incorrecta, vuelva a ingresarla\n");
 		}
 	}
 	//actualizo los puntos
@@ -1173,32 +1156,34 @@ int calcularEnvido(char manoAux[3][17])
 void imprimirEstado(char manoClienteAux[3][17], int *opcionClienteP, char *nombreCliente)
 {
 	//imprime la ultima accion del cliente en la pantalla del server, cuando es el turno del mismo.
-	printf("\n");
 
 	if(*opcionClienteP == 1 || *opcionClienteP == 2 || *opcionClienteP == 3)
-	printf("%s: \"Tiro el %s\"\n", nombreCliente, manoClienteAux[(*opcionClienteP) - 1]);
+	printf("%s: \"Tiro el %s\"", nombreCliente, manoClienteAux[(*opcionClienteP) - 1]);
 
 	if(*opcionClienteP == 4)
-	printf("%s: \"Truco\"\n", nombreCliente);
+	printf("%s: \"Truco\"", nombreCliente);
 	if(*opcionClienteP == 5)
-	printf("%s: \"Retruco\"\n", nombreCliente);
+	printf("%s: \"Retruco\"", nombreCliente);
 	if(*opcionClienteP == 6)
-	printf("%s: \"Quiero vale cuatro\"\n", nombreCliente);
+	printf("%s: \"Quiero vale cuatro\"", nombreCliente);
 
 	if(*opcionClienteP == 7)
-	printf("%s: \"Envido\"\n", nombreCliente);
+	printf("%s: \"Envido\"", nombreCliente);
 	if(*opcionClienteP == 8)
-	printf("%s: \"Real envido\"\n", nombreCliente);
+	printf("%s: \"Real envido\"", nombreCliente);
 	if(*opcionClienteP == 9)
-	printf("%s: \"Falta envido\"\n", nombreCliente);
+	printf("%s: \"Falta envido\"", nombreCliente);
 
 	if(*opcionClienteP == 10)
-	printf("%s: \"Quiero\"\n", nombreCliente);
+	printf("%s: \"Quiero\"", nombreCliente);
 	if(*opcionClienteP == 11)
-	printf("%s: \"No quiero\"\n", nombreCliente);
+	printf("%s: \"No quiero\"", nombreCliente);
 
 	if(*opcionClienteP == 12)
-	printf("%s: \"Me voy al mazo\"\n", nombreCliente);
+	printf("%s: \"Me voy al mazo\"", nombreCliente);
+
+	if(*opcionClienteP != -1)
+	printf("\n\n");
 
 	//reinicio la variable para evitar imprimir mas de una vez lo mismo
 	(*opcionClienteP)=-1;
@@ -1243,12 +1228,76 @@ void enviarEstado(char manoServerAux[3][17], int *opcionServerP, char *nombreSer
 		strcpy(&(buf[strlen(buf)]), "Me voy al mazo\"");
 
 		enviarString(buf);
-
+		
 		//reinicio la variable para evitar imprimir mas de una vez lo mismo
 		(*opcionServerP) = -1;
 	}
 	else
-	enviarString("Nada");
-	
+	enviarString("Nada");//envio esta string para que el cliente no imprima nada
 
+}
+
+void turnoDelServer(char grillaP[][4][90], char manoServerAux[3][17], char manoClienteAux[3][17], int *opcionServerP, int *opcionClienteP,
+char *nombreServer,char *nombreCliente, char manoServerP[][3][17], char compararP[][2][17], int i, int *envidoP, int *trucoP, int *seCantoTrucoP,
+int *seCantoEnvidoP, int *hayQueProcesarEnvidoP, int *puntosClienteP, int *puntosServerP, int *flagP, int *flag1P, int *quienTieneElQuieroP, int manoNumero )
+{
+	//anterior turno del server en el main
+	/*
+	enviarFlag(0);
+	enviarGrilla(grilla);
+	enviarEstado(manoServerAux, &opcionServer, nombreServer);
+	system("clear");
+   	imprimirGrilla(grilla);
+	imprimirMano(manoServer);
+	imprimirEstado(manoClienteAux, &opcionCliente, nombreCliente);
+	opcionServer = imprimirOpciones(&manoServer, &comparar,&grilla,i ,&envido,
+	&truco, &seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosCliente,
+	puntosServer,nombreServer, nombreCliente, &flag1, &quienTieneElQuiero, manoNumero);
+	*/
+	(*flagP) = 0;
+	enviarFlag(0);
+	enviarGrilla(*grillaP);
+	enviarEstado(manoServerAux, opcionServerP, nombreServer);
+	system("clear");
+	imprimirGrilla(*grillaP);
+	imprimirMano(*manoServerP);
+	imprimirEstado(manoClienteAux, opcionClienteP, nombreCliente);
+	(*opcionServerP) = imprimirOpciones(manoServerP, compararP, grillaP, i, envidoP, trucoP, seCantoTrucoP, seCantoEnvidoP, hayQueProcesarEnvidoP,
+	puntosClienteP, *puntosServerP, nombreServer, nombreCliente, flag1P, quienTieneElQuieroP, manoNumero);
+}
+
+void turnoDelCliente(char grillaP[][4][90], char manoServerAux[3][17], char manoClienteAux[3][17], int *opcionServerP, int *opcionClienteP, 
+char *nombreServer, char* nombreCliente, char manoClienteP[][3][17],int i, int *envidoP, int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP,
+int *quienTieneElQuieroP, int manoNumero, char compararP[][2][17], char manoServer[3][17],
+int *hayQueProcesarEnvidoP, int *puntosServerP, int puntosCliente, int *flagP, int *flag1P)
+{
+	//anterior turno del cliente en el main
+	/*
+	enviarFlag(1);
+	enviarGrilla(grilla);
+	enviarEstado(manoServerAux, &opcionServer, nombreServer);
+	enviarOpciones(&manoCliente, i, &envido, &truco, &seCantoTruco, &seCantoEnvido, &quienTieneElQuiero,
+	manoNumero, comparar);
+	system("clear");
+	imprimirGrilla(grilla);
+	imprimirMano(manoServer);
+	printf("Turno de %s\n", nombreCliente);
+	recibirOpcionYActualizar(&opcionCliente, &manoCliente, &comparar, &grilla, i, &envido, &truco,
+	&seCantoTruco, &seCantoEnvido, &hayQueProcesarEnvido, &puntosServer, puntosCliente,
+	nombreServer, nombreCliente, &flag1, &quienTieneElQuiero);
+	*/
+	(*flagP) = 1;
+	enviarFlag(1);
+	enviarGrilla(*grillaP);
+	enviarEstado(manoServerAux, opcionServerP, nombreServer);
+	enviarOpciones(manoClienteP, i, envidoP, trucoP, seCantoTrucoP, seCantoEnvidoP, quienTieneElQuieroP,
+	manoNumero, *compararP);
+	system("clear");
+	imprimirGrilla(*grillaP);
+	imprimirMano(manoServer);
+	imprimirEstado(manoClienteAux, opcionClienteP, nombreCliente);
+	printf("Turno de %s\n", nombreCliente);
+	recibirOpcionYActualizar(opcionClienteP, manoClienteP, compararP, grillaP, i, envidoP, trucoP,
+	seCantoTrucoP, seCantoEnvidoP, hayQueProcesarEnvidoP, puntosServerP, puntosCliente,
+	nombreServer, nombreCliente, flag1P, quienTieneElQuieroP);	
 }

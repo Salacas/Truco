@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdio_ext.h>
 #include "client.h"
 
 void recibirCartas(char manoCliente[][3][17] )
@@ -60,7 +61,7 @@ void enviarString(char *buf)
     }
 }
 
-void recibirString(char buf[][100])
+void recibirString(char *buf)
 {
     int buflen = 0, numbytes = 0;
 
@@ -71,16 +72,16 @@ void recibirString(char buf[][100])
         exit(1);
     }
 
-    if ((numbytes = recv( sockfd , *buf , buflen,   0 )) == -1  )//recibo el string
+    if ((numbytes = recv( sockfd , buf , buflen,   0 )) == -1  )//recibo el string
     {
         perror("recv");
         close(sockfd);
         exit(1);
     }
 
-    (*buf)[numbytes] = '\0';
+    buf[numbytes] = '\0';
 
-    if(strlen(*buf) != buflen)
+    if(strlen(buf) != buflen)
     {
         printf("Error al recibir la string\n");
         close(sockfd);
@@ -93,7 +94,7 @@ void imprimirMano(char manoCliente[3][17])
     
     int i = 0;
 
-    fflush(stdin);
+    __fpurge(stdin);
 
     printf("\nSu mano: ");
     for(i = 0; i < 3;i++)
@@ -106,14 +107,14 @@ void imprimirMano(char manoCliente[3][17])
     printf("\n\n");
 }
 
-void recibirGrilla(char grilla[][4][90])
+void recibirGrilla(char grillaP[][4][90])
 {
     int i = 0, numbytes = 0, j = 0;
     for(i = 0;i < 4; i++)
     {
         for(j = 0; j < 90;j++)
         {
-            if ((numbytes = recv( sockfd , &((*grilla)[i][j]), sizeof(char),  0 )) == -1  )//la cantidad de datos a recibir en el proximo recv
+            if ((numbytes = recv( sockfd , &((*grillaP)[i][j]), sizeof(char),  0 )) == -1  )//recibo caracter por caracter
             {
                 perror("recv");
                 close(sockfd);
@@ -121,6 +122,7 @@ void recibirGrilla(char grilla[][4][90])
             }
         }
     }
+    revertirGrilla(grillaP);//la revierto
 }
 
 void imprimirGrilla(char grilla[4][90])
@@ -139,7 +141,7 @@ void imprimirGrilla(char grilla[4][90])
     printf("\n");
 }
 
-void revertirGrilla(char grilla[][4][90])
+void revertirGrilla(char grillaP[][4][90])
 {
     //revierte la orientacion de la grilla para el punto de vista del jugador cliente
     char fila1[90], fila3[90];
@@ -147,22 +149,22 @@ void revertirGrilla(char grilla[][4][90])
 
     for(i = 0; i < 90; i++)
     {
-        fila1[i]= (*grilla)[1][i];
+        fila1[i]= (*grillaP)[1][i];
     }
 
     for(i = 0; i < 90; i++)
     {
-        fila3[i]= (*grilla)[3][i];
+        fila3[i]= (*grillaP)[3][i];
     }
 
     for(i = 0; i < 90; i++)
     {
-        (*grilla)[1][i] =fila3[i];
+        (*grillaP)[1][i] =fila3[i];
     }
 
     for(i = 0; i < 90; i++)
     {
-        (*grilla)[3][i] =fila1[i];
+        (*grillaP)[3][i] =fila1[i];
     }
     
 }
@@ -192,7 +194,7 @@ void imprimirOpciones(char manoClienteP[][3][17])
 
     while(strcmp(buf, "Fin")!= 0)//mientras no reciba "Fin"
     {
-        recibirString(&buf);
+        recibirString(buf);
 
         if(strcmp(buf, "Fin")!= 0)
         {
@@ -201,11 +203,14 @@ void imprimirOpciones(char manoClienteP[][3][17])
             cantOpciones++;
         }
     }
-
+    
     //pido por teclado la opcion
 	while(flag == 0)
 	{
-		scanf("%d", &opcionElegida);//guardo la opcion elegida en opcionElegida
+        __fpurge(stdin);
+		fgets(buf, 4, stdin);
+		opcionElegida = atoi(buf);
+			
 		//compruebo que la opcion sea correcta
 		for(i = 0;i < cantOpciones; i++)
 		{
