@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <stdio_ext.h>
+#include <termios.h>
 #include "client.h"
 
 void recibirCartas(char manoCliente[][3][17] )
@@ -90,11 +90,8 @@ void recibirString(char *buf)
 }
 
 void imprimirMano(char manoCliente[3][17])
-{
-    
+{    
     int i = 0;
-
-    __fpurge(stdin);
 
     printf("\nSu mano: ");
     for(i = 0; i < 3;i++)
@@ -207,7 +204,7 @@ void imprimirOpciones(char manoClienteP[][3][17])
     //pido por teclado la opcion
 	while(flag == 0)
 	{
-        __fpurge(stdin);
+        clean_stdin();
 		fgets(buf, 4, stdin);
 		opcionElegida = atoi(buf);
 			
@@ -219,7 +216,7 @@ void imprimirOpciones(char manoClienteP[][3][17])
 		}
         if(flag == 0)
         {
-			printf("La opcion ingresada no esta disponible\n");
+			printf("\nLa opcion ingresada no esta disponible\n");
             printf("Ingrese nuevamente la opcion deseada\n");
         }
 	}
@@ -236,4 +233,13 @@ void imprimirOpciones(char manoClienteP[][3][17])
     if(opcionElegida == 1 || opcionElegida == 2 || opcionElegida == 3)
     strcpy((*manoClienteP)[opcionElegida - 1], "x");
 
+}
+
+void clean_stdin(void)
+{
+    //limpia el stdin para usarlo con fgets
+	int stdin_copy = dup(STDIN_FILENO);
+    tcdrain(stdin_copy);
+    tcflush(stdin_copy, TCIFLUSH);
+    close(stdin_copy);
 }

@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     //inicio de conexion--------------------------------------------------------------------
 	printf("Conexion exitosa con el servidor\n");
 	printf("Ingrese su nombre: ");
-    __fpurge(stdin);
+    clean_stdin();
     fgets(nombreCliente, 12, stdin);
     nombreCliente[strcspn(nombreCliente, "\n")] = '\0';//le saco el \n
 

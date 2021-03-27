@@ -79,15 +79,15 @@ int main( void )
 	
 	printf("Conexion desde %s\n", inet_ntoa(their_addr.sin_addr));
 	printf("Ingrese su nombre: ");
-	__fpurge(stdin);
+	clean_stdin();
     fgets(nombreServer, 12, stdin);
     nombreServer[strcspn(nombreServer, "\n")] = '\0';//le saco el \n
 
 	while(flag == 0)//para cubrir errores del usuario
 	{
 		printf("A cuantos puntos quiere jugar?\n");
-		printf("Ingrese ""15"" o ""30"":");
-		__fpurge(stdin);
+		printf("Ingrese ""15"" o ""30"": ");
+		clean_stdin();
 		fgets(buf, 4, stdin);
 		puntosMaximos = atoi(buf);
 		if(puntosMaximos == 15 || puntosMaximos == 30)
@@ -177,10 +177,8 @@ int main( void )
 					if(hayQueProcesarEnvido == 1)//si se acepto el envido
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
-						opcionCliente = -1;
-						opcionServer = -1;
-						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos)flag1=1;
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer, &opcionCliente);
+						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos)flag1=1;//si se gano el partido con el envido
 						hayQueProcesarEnvido = 0;
 					}
 					if(envido > 0 && envido < 100 && seCantoEnvido == 0 && comparar[0][0]=='t' )
@@ -201,9 +199,7 @@ int main( void )
 					if(hayQueProcesarEnvido == 1)
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
-						opcionCliente = -1;
-						opcionServer = -1;
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer, &opcionCliente);
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
 						hayQueProcesarEnvido = 0;
 					}
@@ -295,9 +291,7 @@ int main( void )
 					if(hayQueProcesarEnvido == 1)//si se acepto el envido
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
-						opcionCliente = -1;
-						opcionServer = -1;
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer, &opcionCliente);
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
 						hayQueProcesarEnvido = 0;
 					}
@@ -317,9 +311,7 @@ int main( void )
 					if(hayQueProcesarEnvido == 1)
 					{
 						procesarEnvido(manoClienteAux, manoServerAux, envido, &puntosServer, &puntosCliente,
-						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer);
-						opcionCliente = -1;
-						opcionServer = -1;
+						manoNumero, puntosMaximos, &grilla, manoServer, nombreServer,nombreCliente, &opcionServer, &opcionCliente);
 						if(puntosServer == puntosMaximos || puntosCliente == puntosMaximos) flag1 = 1;
 						hayQueProcesarEnvido = 0;
 					}
@@ -422,7 +414,7 @@ int main( void )
 			else if(auxFlag == 0)
 			enviarEstado(manoServerAux, &opcionServer, nombreServer);
 
-			printf("\n%s ha ganado el partido\n", nombreServer);
+			printf("%s ha ganado el partido\n", nombreServer);
 			sprintf(buf, "%s ha ganado el partido", nombreServer);
 			enviarString(buf);
 		}
@@ -443,7 +435,7 @@ int main( void )
 			else if(auxFlag == 0)
 			enviarEstado(manoServerAux, &opcionServer, nombreServer);
 
-			printf("\n%s ha ganado el partido\n", nombreCliente);
+			printf("%s ha ganado el partido\n", nombreCliente);
 			sprintf(buf, "%s ha ganado el partido", nombreCliente);
 			enviarString(buf);
 		}

@@ -6,7 +6,7 @@
 
 //variables globales
 int sockfd, new_fd;	// Escuchar sobre sock_fd, conexion del cliente sobre new_fd
-
+char mensajeServer[MAXDATASIZE], mensajeCliente[MAXDATASIZE];// variables usadas por enviarEstado e imprimirEstado
 //struct
 typedef struct carta
 {
@@ -65,7 +65,7 @@ int calcularEnvido(char manoAux[3][17]);
 
 void procesarEnvido(char manoClienteAux[3][17],char manoServerAux[3][17], int envido, int *puntosServerP,
 int *puntosClienteP, int manoNumero, int puntosMaximos, char grillaP[][4][90], char manoServer[3][17], char *nombreServer,char *nombreCliente,
-int *opcionServerP);
+int *opcionServerP, int *opcionClienteP);
 
 void imprimirEstado(char manoClienteAux[3][17], int *opcionClienteP, char *nombreCliente);
 
@@ -79,3 +79,5 @@ void turnoDelCliente(char grillaP[][4][90], char manoServerAux[3][17], char mano
  char* nombreCliente, char manoClienteP[][3][17],int i, int *envidoP, int *trucoP, int *seCantoTrucoP, int *seCantoEnvidoP,
  int *quienTieneElQuieroP, int manoNumero, char compararP[][2][17], char manoServer[3][17],
  int *hayQueProcesarEnvidoP, int *puntosServerP, int puntosCliente, int *flagP, int *flag1P);
+
+ void clean_stdin(void);

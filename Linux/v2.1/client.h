@@ -22,3 +22,5 @@ void revertirGrilla(char grillaP[][4][90]);
 void recibirFlag(int *flagp);
 
 void imprimirOpciones(char manoClienteP[][3][17]);
+
+void clean_stdin(void);
