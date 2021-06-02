@@ -1,0 +1,8 @@
+﻿  cliente.c
+C:\Users\lean5\Documents\Programas\Cliente\cliente.c(43,50): warning C4244: '=': conversión de 'SOCKET' a 'int'; posible pérdida de datos
+  Generando código
+  1 of 18 functions ( 5.6%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Generación de código finalizada
+  Cliente.vcxproj -> C:\Users\lean5\Documents\Programas\Cliente\x64\Release\Cliente.exe
