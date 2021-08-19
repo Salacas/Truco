@@ -1,5 +1,5 @@
 from itertools import combinations
-import random
+import sys
 class Envido():
     """Conjunto de funciones relacionadas al envido."""
 
@@ -18,7 +18,10 @@ class Envido():
         #si es un set
         if type(cartas) == type(set()):
             cartas = list(cartas)
-
+        #verifico errores
+        if len(cartas) != 2:
+            sys.exit("cartas debe ser de longitud 2")
+            
         #guardo el valor numerico de las cartas
         if cartas[0].split()[0] == "As":
             c1 = 1
@@ -74,17 +77,21 @@ class Envido():
             for comb in combinations(mi_mano, 2):
                 e[comb] = self.calc_envido(comb)
             mi_envido = max(e.values())
-        else:
+        elif len(mi_mano) == 2:
             mi_envido = self.calc_envido(mi_mano)
-        
+        else:
+            sys.exit("mi_mano debe ser de longitud 3 o 2")
+
         #lo mismo con mano_adv
         if len(mano_adv) == 3:
             e = dict()
             for comb in combinations(mano_adv, 2):
                 e[comb] = self.calc_envido(comb)
             envido_adv = max(e.values())
-        else:
+        elif len(mano_adv) == 2:
             envido_adv = self.calc_envido(mano_adv)
+        else:
+            sys.exit("mano_adv debe ser de longitud 3 o 2")
 
         #veo quien tiene mas envido
         if mi_envido > envido_adv:
@@ -100,9 +107,11 @@ class Envido():
     def prob_ganar_envido(self, mi_mano, soy_mano, carta_adv = None):
         """Retorna la probabilidad de ganar el envido dada una determinada
         mano y si se es o no mano."""
+        #verifico errores
+        if len(mi_mano) != 3:
+            sys.exit("mi_mano debe ser de longitud 3")
 
         prob = 0.0
-
         #si no se conoce ninguna carta del adversario
         if carta_adv == None:
             for comb in combinations(self.mazo - mi_mano, 3):
@@ -124,11 +133,16 @@ class Envido():
         return prob
 
 def test():
-    mi_mano = {"2 de Basto", "As de Oro", "10 de Oro"}
+    mi_mano = {"2 de Basto", "7 de Oro", "10 de Oro"}
     env = Envido()
     soy_mano = True
-    print("Proba de ganar envido dado el mazo", mi_mano, ":\n",
-    env.prob_ganar_envido(mi_mano, soy_mano))
+    carta_adv = None
+
+    print("Probabilidad de ganar envido dada la mano:", mi_mano)
+    print("Y siendo mano:", soy_mano)
+    if carta_adv != None:
+        print("Y dada la carta del adversario:", carta_adv)
+    print(env.prob_ganar_envido(mi_mano, soy_mano, carta_adv))
 
 if __name__ == "__main__":
     test()
