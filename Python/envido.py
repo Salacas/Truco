@@ -15,6 +15,9 @@ class Envido():
 
     def calc_envido(self, cartas):
         """Calcula el envido dadas 2 cartas"""
+        #si es un set
+        if type(cartas) == type(set()):
+            cartas = list(cartas)
 
         #guardo el valor numerico de las cartas
         if cartas[0].split()[0] == "As":
@@ -94,16 +97,25 @@ class Envido():
             else:
                 return False
 
-    def prob_ganar_envido(self, mi_mano, soy_mano):
+    def prob_ganar_envido(self, mi_mano, soy_mano, carta_adv = None):
         """Retorna la probabilidad de ganar el envido dada una determinada
         mano y si se es o no mano."""
 
         prob = 0.0
 
-        for comb in combinations(self.mazo - mi_mano, 2):
-            if self.quien_gana_envido (mi_mano, comb, soy_mano) == True:
-                prob += 1.0
-        prob /= 666
+        #si no se conoce ninguna carta del adversario
+        if carta_adv == None:
+            for comb in combinations(self.mazo - mi_mano, 3):
+                if self.quien_gana_envido (mi_mano, comb, soy_mano) == True:
+                    prob += 1.0
+            prob /= 7770
+        #si, en cambio, se conoce una
+        else:
+            for comb in combinations(self.mazo - mi_mano, 3):
+                if carta_adv in comb:
+                    if self.quien_gana_envido (mi_mano, comb, soy_mano) == True:
+                        prob += 1.0
+            prob /= 630
 
         #redondeo
         if(prob > 1.0):
@@ -112,20 +124,11 @@ class Envido():
         return prob
 
 def test():
-    mi_mano = {"7 de Oro", "10 de Basto", "10 de Espada"}
+    mi_mano = {"2 de Basto", "As de Oro", "10 de Oro"}
     env = Envido()
     soy_mano = True
-
-    print("Proba de ganar envido =", env.prob_ganar_envido(mi_mano, soy_mano))
-
-    for i in range(10):
-        aux = list(env.mazo)
-        c1 = random.choices(aux)
-        c1 = c1[0]
-        aux.remove(c1)
-        c2 = random.choices(aux)
-        c2 = c2[0]
-        print(c1, c2, "Envido:", env.calc_envido((c1, c2)))
+    print("Proba de ganar envido dado el mazo", mi_mano, ":\n",
+    env.prob_ganar_envido(mi_mano, soy_mano))
 
 if __name__ == "__main__":
     test()
